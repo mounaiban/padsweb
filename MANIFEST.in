@@ -2,3 +2,4 @@ include LICENSE
 include README.rst
 recursive-include padsweb/static *
 recursive-include padsweb/templates *
+recursive-include padsweb/tests *
