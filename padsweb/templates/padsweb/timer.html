@@ -1,0 +1,230 @@
+{% extends "padsweb/padsweb.html" %}
+{# Timer Detail Template #}
+
+{% block title %}
+	{{timer.get_heading}} - PADS
+{% endblock%}
+
+{% block content %}
+	<article class="sp-100 zero-margin item-detail">
+		<section>
+			<h1>{{ timer.get_running_time_string }}</h1>
+				{% if timer.is_running %}
+					<p>({{ timer.count_from_date_time | timesince }})</p>
+					<h2>Since</h2>
+						<p id="item-detail-blurb">{{ timer.get_description }}</p>
+					<h2>Counting from</h2>
+						<p>{{ timer.count_from_date_time }}</p>
+				{% else %}
+					<h2>Last Running Time When</h2>
+						<p id="item-detail-blurb">{{ timer.get_description }}</p>
+					<h2>This Timer was suspended on</h2>
+						<p>{{ timer.reset_history_latest.date_time }}</p>
+				{% endif %}
+				<h2>Created on</h2>
+					<p>{{ timer.creation_date_time }}
+					{% if timer.is_pre_dated %}
+						<p>(this timer's current count is back-dated)</p>
+					{% endif %}
+			
+				<h2>Owner</h2>
+					<p> {{ timer.creator_user_nickname_short }} </p></p>
+		</section>		
+	</article>
+	
+	{# Timer History #}
+	<article class="index-article-group index-group-feature-dark ll-100 sp-100">
+		<header>
+			<h2>Timer History</h2>
+		</header>
+		<section>
+		{% if timer.reset_count > 0 %}
+			{% for h in timer.reset_history %}
+			<article class="index-article-item index-item-normal">
+				<header>
+					<h3>
+					{{h.date_time|timesince}} ago
+					</h3>
+				</header>
+				<section>
+					<p>{{ h.reason }}</p>
+				</section>
+				<footer>
+					<p>{{h.date_time}}</p>
+				</footer>
+			</ul>
+			</article>
+			{% endfor %}
+		{% else %}
+			<h3>No timer history found...</h3>
+		{% endif %}
+		</section>
+		<footer>
+		</footer>
+		<div id="hot-air"></div>
+	</article>
+	
+	{# Options for Editing Timers #}
+	{% if edit_enabled %}
+		{# Timer Reset #}
+		{% if not timer.is_historical %}
+			<article class="forms-and-options forms-help ll-25-right sp-100">
+				<section>
+					<h1>Timer Reset</h1>
+						<p>Resetting a timer makes it begin counting from zero days again.</p>
+				</section>
+			</article>
+			<article class="forms-and-options forms-normal ll-75-left sp-100">
+				<section>
+				<h2>Reset This Timer</h2>
+					{% if not timer.is_running %}
+					<p>This timer has been suspended. Reset it to get it running again.</p>
+					{% endif %}
+					<p>This operation cannot be undone. Resets are recorded in the Timer History.</p>
+					<form action="{% url 'padsweb:timer_reset' timer.id %}" method="post">
+						{% csrf_token %}
+						{{ reason_form.reason.label_tag }}
+						{{ reason_form.reason }}
+						<input type='submit' value='Reset Timer'/>
+					</form>
+				</section>
+			</article>
+		{% endif %}
+	
+		{# Timer Stops and Suspensions #}
+		{% if timer.is_historical %}
+			{# Options For Historical Timers #}
+			{% if timer.is_running %}
+			<article class="forms-and-options forms-normal ll-75-left sp-100">
+				<section>
+				<h2>Stop Historical Timer</h2>
+					<p>This action is not undoable.</p>
+					<form action="{% url 'padsweb:timer_stop' timer.id %}" method="post">
+						{% csrf_token %}
+						{{ reason_form.reason.label_tag }}
+						{{ reason_form.reason }}
+						<input type='submit' value='Stop Timer'/>
+					</form>
+				</section>
+			</article>			
+			{% else %}
+			<article class="forms-and-options forms-normal ll-75-left sp-100">
+				<h2>Historical Timer Stopped</h2>
+				<section>
+					<p>This Timer has been Stopped and shall not be restarted.</p>
+				</section>
+			</article>
+			{% endif %}
+		{% else %}
+			{# Options for Regular Timers #}
+			{% if timer.is_running %}
+				<article class="forms-and-options forms-normal ll-75-left sp-100">
+					<h2>Suspend Timer</h2>
+					<section>
+						<p>This cannot (really) be undone.</p>
+						<form action="{% url 'padsweb:timer_stop' timer.id %}" method="post">
+							{% csrf_token %}
+							{{ reason_form.reason.label_tag }}
+							{{ reason_form.reason }}
+							<input type='submit' value='Suspend Timer'/>
+						</form>
+					</section>
+				</article>			
+			{% endif %}
+		{% endif %}
+			
+		{# Timer Sharing #}
+		<article class="forms-and-options sp-100 ll-25-right forms-help">
+			<section>
+			<h1>Timer Sharing</h1>
+				<p>Sharing a timer makes it visible on the Public Archive.</p>
+			</section>
+		</article>
+		<article class="forms-and-options sp-100 ll-75-left forms-normal">
+			<section>
+			{% if timer.is_public %}
+				<h2>Make Timer Private</h2>
+					<form action="{% url 'padsweb:timer_unshare' timer.id %}" method="post">
+						{% csrf_token %}
+						<input type='submit' value='Hide Timer'/>
+					</form>				
+			{% else %}
+				<h2>Make Timer Public</h2>
+					<form action="{% url 'padsweb:timer_share' timer.id %}" method="post">
+						<p>The timer is currently private. Avoid sharing sensitive information.</p>
+						{% csrf_token %}
+						<input type='submit' value='Share Timer'/>
+					</form>
+			{% endif %}
+			</section>
+		</article>
+		
+		{# Timer Groups #}
+		{% if not user.is_anonymous %}
+			<article class="forms-and-options forms-help sp-100 ll-25-right">
+				<section>
+					<h1>Groups</h1>
+						<p>Organise your timers by adding them to a Timer Group.</p>
+				</section>
+			</article>
+			<article class="forms-and-options sp-100 ll-75-left forms-normal">
+				<section>
+					<h2>Groups</h2>
+					<h2>This Timer is in the following Groups</h2>
+						<form action="{% url 'padsweb:timer_remove_from_group' timer.id %}" method="POST">
+							{% csrf_token %}
+							{{ remove_timer_inclusion_form.timer_group.label_tag }}
+							{{ remove_timer_inclusion_form.timer_group }}							
+							<input type="submit" value="Remove from Group" />
+						</form>
+						<h2>Add Timer to a Group</h2>
+						<form action="{% url 'padsweb:timer_add_to_group' timer.id %}" method="POST">
+							{% csrf_token %}
+							{{ add_timer_inclusion_form.timer_group.label_tag }}
+							{{ add_timer_inclusion_form.timer_group }}
+							<input type="submit" value="Add to Group"/>
+							<p> To create timer groups, <a href="{% url 'padsweb:settings_info' %}">go to your Options page.</a></p>
+						</form>
+				</section>
+			</article>
+		{% endif %}
+		
+		{# Timer Renaming #}
+		{% if not timer.is_historical %}
+			<article class="forms-and-options sp-100 ll-25-right forms-help">
+				<section>
+					<h1>Edit Timer Description</h1>
+					<p>You can change a timer's description. Changing a timer's description automatically resets it.</p>
+				</section>
+			</article>
+			<article class="forms-and-options sp-100 ll-75-left forms-normal">
+				<section>
+					<h2>Edit Timer Description</h2>
+						<p>This cannot (really) be undone.</p>
+						<form action="{% url 'padsweb:timer_rename' timer.id %}" method="post">
+							{% csrf_token %}
+							{{ rename_timer_form.description.label_tag }}
+							{{ rename_timer_form.description }}
+							<input type='submit' value='Reset &amp; Change Description'>
+						</form>
+				</section>
+			</article>
+		{% endif %}
+		<article class="forms-and-options sp-100 ll-25-right forms-help">
+			<section>
+				<h1>Delete Timer</h1>
+				<p>Pretty much self-explanatory.</p>
+			</section>
+		</article>
+		<article class="forms-and-options sp-100 ll-75-left forms-normal">
+			<section>
+				<h2>Delete Timer</h2>
+					<form action="{% url 'padsweb:timer_del' timer.id %}" method="post">
+						<p>This operation cannot be undone.</p>		
+						{% csrf_token %}
+						<input type='submit' value='Delete Timer'/>
+					</form>
+			</section>
+		</article>
+	{% endif %}
+{% endblock %}

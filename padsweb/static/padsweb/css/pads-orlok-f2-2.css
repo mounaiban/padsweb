@@ -1,0 +1,562 @@
+/* PADS Orlok (unpretty) Style Sheet */
+/* featuring the Touchwood Colour Scheme */
+/* Version F2: Now With 45% More HTML5.x Semantics */
+
+/* Styles ordered by scope, from least to most item-specific */
+
+/* Element Default Styles */
+a {
+	color : #fc4;
+	font-weight : bold;
+}
+body {
+	background : #211;
+	color : #dd9;
+	font-family : serif;
+	min-width : 430px;
+}
+@media(min-width:720px)
+{
+	body {
+		min-width : 720px;
+	}
+}
+
+/* Shortcut Classes */
+.zero-margin{
+	margin : 0;
+}
+.zero-padding{
+	padding : 0;
+}
+
+/* Shortcut Id's */
+#hot-air{
+	/* Workaround to prevent 'collapsing' when floats are used. */
+	/* This keeps elements at their intended height */
+	clear : both;
+}
+
+/* General Article and Section Layout Styles */
+
+/* Small Portrait-only styles */
+@media(max-width:719px){
+	.sp-100{
+		margin : 0;
+		padding : 0.5em 1.5em 0.5em 1.5em;
+	}
+}
+/* Large Landscape-only styles */
+
+/* Top and Bottom Paddings to be left in ems, to make the
+ *  so that they remain unchanged with screen width.*/
+
+@media(min-width:720px){
+	/* Keep filling the entire width of the screen when large */
+	.ll-100{
+		clear : both;
+		float : none;
+		margin : 0;
+		padding : 1%;
+
+	}
+	/* Fill 75% of the left, including margins */
+	 .ll-75-left{
+		float : left;
+		width : 72%;
+		margin : 0.5em 0.5% 0.5em 1%;
+		padding : 0.5em 0.5% 0.5em 1%;
+	 }
+	/* Fill 25% of the right, including margins */
+	 .ll-25-right{
+		clear : right;
+		float : right;
+		width : 20%;
+		margin : 0.5em 1% 0.5em 0.5%;
+		visibility : visible;
+		padding : 0.5em 0.5% 0.5em 1%;
+	 }
+}
+
+/* Header Stuff */
+
+/* PADS Title Bar Layout*/
+#global-header{
+	margin : 0;
+	background : #811;
+	padding : 0.5em;
+}
+#pads-title{
+	padding-left : 0.25em;
+	padding-right : 0.25em;
+	font-weight : bold;
+	letter-spacing : -0.25em;
+	color : #cc8;
+	background : none;
+	border: none;
+}
+
+/* Header Navigation */
+.header-nav{
+	clear: both;
+	float: none;
+}
+.nav-menu{
+	margin: 0.25em;
+	padding: 0;
+}
+.nav-menu li{
+	float : left;
+	list-style: none;
+	padding: 0.5em;
+	margin: 0.25em;
+	text-align: center;
+	font-size: 12pt;
+	border-style : solid;
+	border-width : 0 0 0 2px;
+	border-color : #411;
+	background : #811;
+}
+#user-name-display{
+	clear : both;
+	float : none;
+	margin : 0;
+	font-size : 10pt;
+	border-style : none;
+}
+/* PADS Title Bar Large Landscape Layout Rules */
+@media(min-width:720px){
+	.header-nav{
+		clear: both;
+	}
+	.nav-menu {
+		margin: 0;
+		background : #811;
+	}
+	.nav-menu li{
+		float : left;
+		list-style: none;
+		/* Top and Bottom Padding to be left in ems, to make the
+		 *  navigation menu the same regardless of screen width.*/
+		padding: 0.5em 1% 0.5em 1%;
+		margin: 0;
+		text-align: center;
+		font-size: 12pt;
+	}
+	#pads-title{
+		padding-left : 0.25%;
+		padding-right : 0.25%;
+	}
+	#user-name-display{
+		clear : none;
+		float : right;
+	}
+}
+
+/* Banner Layout Styles */
+.banner {
+	clear : both;
+	float : none;
+	padding : 1.5em 1em 1.5em 1em;
+}
+@media(min-width:720px){
+	.banner {
+		clear : both;
+		float : none;
+		padding : 2% 0 2% 0;
+	}
+}
+/* Banner Appearance Styles */
+.banner {
+	font-size : 14pt;
+	text-align : center;
+}
+.banner-failure-denial{
+	font-weight : bold;
+	text-align : center;
+	background : #e44;
+	color : #eea;
+}
+.banner-failure-error{
+	font-weight : bold;
+	text-align : center;
+	background : #f44;
+	color : #411;
+}
+.banner-info{
+	font-weight : bold;
+	text-align : center;
+	background : #556;
+}
+.banner-success{
+	font-style : italic;
+	text-align : center;
+	background : #274;
+}
+@media(min-width:720px){
+	.banner-failure-denial{
+		font-size : 10pt;
+	}
+
+	.banner-failure-error{
+		font-size : 10pt;
+		font-weight : bold;
+	}
+	.banner-info{
+		font-size : 10pt;
+		font-weight : normal;
+		font-style : italic;
+	}
+	.banner-success{
+		font-size : 10pt;
+		font-weight : normal;
+		font-style : italic;
+	}
+}
+
+/* Content Stuff *
+
+/* Forms Stuff Used Everywhere */
+.forms-and-options section{
+	padding: 0.5em 0 1.5em 0;
+}
+.forms-and-options h1{
+	clear: both;
+	margin: 0.5em 0 0.5em 0;
+}
+.forms-and-options h2{
+	clear: both;
+}
+.forms-and-options input{
+	border: 0;
+	margin: 0.25em;
+	padding: 0.5em;
+}
+.forms-input-label-set{
+	margin: auto;
+	float : none;
+}
+/* Large Landscape Forms and Options Layout Rules */
+@media(min-width:720px){
+	.forms-and-options h1{
+		clear: both;
+		margin: 0.75% 0 0.75% 0;
+	}
+	.forms-and-options input{
+		/* Top and Bottom Padding to be left in ems, to make the
+		 *  form inputs the same size regardless of screen width.*/
+		border: 0;
+		margin: 0.75em;
+		padding: 0.5em;
+	}
+	.forms-input-label-set{
+		margin: auto;
+	}
+}
+/* Forms Appearance Styles */
+/* Normal Form */
+.forms-normal{
+	background: #511;
+	font-size: 12pt;
+}
+.forms-normal h1{
+	font-size : 12pt;
+	font-variant : small-caps;
+	font-weight: bold;
+	color : #e85;
+}
+.forms-normal h2{
+	font-size: 10.5pt;
+}
+.forms-normal input{
+	background : #7b6;
+	color : #532;
+	font-weight : bold;
+	font-size : 12pt;
+}
+.forms-normal label{
+	font-variant : small-caps;
+}
+@media(min-width:720px){
+	.forms-normal section{
+		font-size : 10.5pt;
+	}
+	.forms-normal h1{
+		font-size : 14pt;
+		font-weight: bold;
+	}
+	.forms-normal p{
+		line-height: 12pt;
+		font-size: 10.5pt;
+	}
+
+}
+
+
+/* Query Forms */
+.forms-query input{
+	background : #dd9;
+}
+
+/* Form Tips & Instructions */
+.forms-help{
+	background: #411;
+	font-size: 9pt;
+	line-height: 12pt;
+	font-style : italic;
+}
+.forms-help h1{
+	font-size : 10pt;
+	color : #aa6;
+	font-style : normal;
+}
+@media(min-width:720px){
+	.forms-help h1{
+		font-size : 12pt;
+	}
+}
+
+
+/* Item Detail Styles */
+.item-detail{
+	clear : both;
+	padding : 2.5em 1em 2.5em 1em;
+	text-align : center;
+	background : #533;
+	color : #cc8;
+}
+.item-detail section{
+	overflow : hidden;
+}
+.item-detail h1{
+	margin : 0.5em 0 0.5em 0;
+	font-size : 1.75em;
+	font-weight : bold;
+	font-variant : small-caps;	
+}
+.item-detail h2{
+	margin : 2em 0 0.5em 0;
+	font-size : 1.0em;
+	font-style : italic;
+	font-weight : bold;
+	font-variant : small-caps;	
+}
+.item-detail p {
+	margin : 0.5em 0 0.5em 0;
+	font-size : 1.0em;
+	font-weight : normal;
+}
+#item-detail-blurb {
+	word-break : normal;
+	font-size : 1.5em;
+	font-weight : bold;
+}
+.item-detail-improvised-tag {
+	float: left;
+	margin: 0.125em;
+	padding: 0.125em;
+	background: #cc8;
+	color: #542;
+}
+
+/* Large Landscape Item Detail Layout Rules */
+@media(min-width:720px){
+	.item-detail h1{
+		margin : 0.1% 0 0.1% 0;
+		font-size : 24pt;
+	}
+	.item-detail h2{
+		font-size : 12pt;
+		font-weight : normal;
+	}
+	.item-detail p {
+		margin : 0.1% 0 0.1% 0;
+		font-size : 12pt;
+		font-weight : normal;
+	}
+	#item-detail-blurb {
+		margin: 0;
+		font-size : 18pt;
+		font-weight : normal;
+	}
+}
+
+/* Index Article Group Styles */
+/* Also used for History Lists */
+
+/* Index Article Group Layout */
+.index-article-group {
+	padding : 0.5em 1.5em 1.5em 1.5em;
+}
+.index-article-group header{
+	padding : 1em 0.5em 1.5em 0.5em;
+}
+.index-article-item header{
+	float : left;
+	width : 25%;	
+	padding : 0.25em 0.5em 0.75em 0.5em;
+}
+.index-article-group h3{
+	margin : 0;
+}
+.index-article-group h3 p:first-child{
+	font-size : 16pt;
+	float: none;
+}
+.index-article-group h3 p:nth-child(2){
+	font-size : 12pt;
+	float: none;
+}
+.index-article-group h3 p{
+	float: left;
+	font-size : 10.5pt;
+	font-weight : regular;
+	font-style : italic;
+}
+
+#index-article-page-controls{
+	clear: both;
+	float: none;
+	padding : 0.5em 2em 1.5em 2em;
+	font-size : 12pt;
+}
+#index-article-page-controls form{
+	float : left;
+}
+#index-article-page-controls span{
+	padding : 0.25em;
+	float : left;
+	font-size : 20pt;
+}
+.index-article-item{
+	border-width : 0 0 0.1em 0;
+	border-style : dashed;
+}
+.index-article-item header{
+}
+.index-article-item section{
+	float : left;
+	width : 66.5%;
+	padding : 0.5em;
+	overflow : hidden;
+}
+.index-article-item p{
+	margin : 0;
+}
+.index-article-item footer{
+	clear : both;
+	padding : 0.125em 0.25em 0.125em 0.25em;
+}
+.index-article-item footer p{
+	text-align : right;
+}
+/* Large Landscape Layout Styles */
+@media(min-width:720px){
+	.index-article-group {
+		padding : 0;
+	}
+	.index-article-group header{
+		padding : 0.5em 0 0.5em 0;
+	}
+	.index-article-group section{
+		padding : 1em;
+	}
+	.index-article-group h2{
+	}
+	.index-article-group h3{
+		margin : 0;
+		text-align : center;
+		font-weight : bold;
+	}
+	.index-article-item{
+		margin : 0.25em;
+		border-width : 0.05em;
+		border-style : dotted;
+	}
+	.index-article-item header{
+		width: 15%;
+	}
+	.index-article-item h3 span{
+		font-size : 12pt;
+	}
+	.index-article-item section{
+		float : none;
+		width : auto;
+		padding : 1em;
+	}
+
+}
+
+/* Index Article Group Appearance */
+.index-article-group h2{
+	text-align : center;
+	font-size : 1.25em;
+	font-style: italic;
+	font-weight: normal;
+	font-variant : small-caps;
+}
+.index-article-group h3{
+	text-align : center;
+	font-variant : small-caps;
+	font-weight : bold;
+	font-size : 1em;
+}
+.index-article-group h3 span:first-child{
+	text-align : center;
+	font-variant : small-caps;
+	font-weight : bold;
+	font-size : 1.5em;
+}
+.index-article-item a{
+	font-size : 1.25em;
+	font-weight : normal;
+	font-weight : bold;
+}
+.index-article-item footer{
+	font-size : 0.75em;
+}
+.index-group-normal{
+	background : #411;
+}
+.index-group-normal:nth-child(2n){
+	background : #311;
+}
+.index-group-feature-dark{
+	background : #421;
+}
+.index-item-normal header{
+	background: #811;
+}
+
+/* Large Landscape Article Appearance Rules */
+@media(min-width:720px){
+	.index-article-group h2{
+		font-size : 12pt;
+	}
+	.index-article-item a{
+		font-size : 12pt;
+		font-weight : normal;
+	}
+	.index-article-item h3 span:first-child {
+		font-size : 12pt;
+		font-weight : bold;
+	}
+	.index-article-item h3 span {
+		font-size : 10.5pt;
+		font-weight : normal;
+	}
+}
+
+/* Template Footer Stuff */
+#global-footer {
+	clear : both;
+	padding : 1em;
+	text-align : center;
+	font-size : 12pt;
+	background : #811;
+}
+@media(min-width:720px){
+	#global-footer {
+		font-size : 10pt;
+	}
+}

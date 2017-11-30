@@ -1,0 +1,92 @@
+{% extends "padsweb/padsweb.html" %}
+{# New Timer Page, With Extra Options #}
+{% block title %}Set Up New Timer{% endblock %}
+{% block content %}
+	{% if signed_in %}
+		<article class="forms-and-options sp-100 ll-100 forms-normal">
+			<section>
+				<h1>Create a Timer</h1>
+				<form action = "{% url 'padsweb:timer_new' %}" method="post">
+					{% csrf_token %}
+					<section>
+						<h2>Timer Description</h2>
+						<p>Enter a description for your timer.</p>
+							<div class="forms-input-label-set">
+								{{ add_new_timer_form.description.label_tag }}
+								{{ add_new_timer_form.description }}
+								<span>{{ add_new_timer_form.description.help_text }}</span>
+							</div>
+					</section>
+						<h2>Creation Message</h2>
+						<p>Enter a creation message for your new Timer.</p>
+						<p>This message will appear as the first entry of
+							your Timer's History.</p>
+							<div class="forms-input-label-set">
+								{{ add_new_timer_form.first_history_message.label_tag }}
+								{{ add_new_timer_form.first_history_message }}
+							</div>
+					<section>
+					</section>
+					<section>					
+						<h2>Timer Initial Date &amp; Time Type</h2>
+							<p>By default, the current date and time will be used.
+								The new Timer will start counting from zero days.</p>
+
+							<p>Alternatively, specify a past date and time to use as the
+								initial date and time, if you don&apos;t want your Timer to
+								count from zero.</p>
+							<p>Please be aware that the date time below will be 
+								<strong>ignored</strong> if the Use Current Date
+								And Time option is enabled.</p>
+							<div class="forms-input-label-set">
+								{{ add_new_timer_form.year.label_tag }}
+								{{ add_new_timer_form.year }}
+							</div>
+							<div class="forms-input-label-set">
+								{{ add_new_timer_form.month.label_tag }}
+								{{ add_new_timer_form.month }}
+							</div>
+							<div class="forms-input-label-set">
+								{{ add_new_timer_form.day.label_tag }}
+								{{ add_new_timer_form.day }}
+							</div>
+							<div class="forms-input-label-set">
+								{{ add_new_timer_form.hour.label_tag }}
+								{{ add_new_timer_form.hour }}
+							</div>
+							<div class="forms-input-label-set">
+								{{ add_new_timer_form.minute.label_tag }}
+								{{ add_new_timer_form.minute }}
+							</div>							
+							<div class="forms-input-label-set">
+								{{ add_new_timer_form.second.label_tag }}
+								{{ add_new_timer_form.second }}
+							</div>							
+							<div class="forms-input-label-set">
+								{{ add_new_timer_form.use_current_date_time.label_tag }}
+								{{ add_new_timer_form.use_current_date_time }}
+							</div>
+					</section>
+					<section>
+							<input type="submit" value="Create Timer!"/>
+					</section>
+					<h1>More Options</h1>
+					<section>
+						<h2>Historical Timer</h2>
+							<p>Check the box below to create a Historical Timer.
+							These timers cannot be reset.</p>
+							<p>Historical timers can be stopped once, and
+							once stopped, cannot be restarted.</p>
+							<div class="forms-input-label-set">
+								{{ add_new_timer_form.historical.label_tag }}
+								{{ add_new_timer_form.historical }}
+							</div>
+					</section>
+					<section>
+						<input type="submit" value="Create Timer!"/>
+					</section>
+				</form>
+			</section>
+		</article>
+	{% endif %}
+{% endblock %}

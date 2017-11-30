@@ -1,0 +1,79 @@
+{% extends "padsweb/padsweb.html" %}
+{# Public Index View #}
+
+{% block title %}
+	{% if signed_in %}
+		Personal Archive of &lsquo;Days Since&rsquo; Timers
+	{% else %}
+		Public Archive of &lsquo;Days Since&rsquo; Timers
+	{% endif %}
+{% endblock %}
+
+{% block content %}
+	<article class="sp-100 ll-25-right forms-and-options forms-normal">
+		<section>
+		<form method="GET">
+			<label for="q">Search Timers:</label>
+			<input type="text" size="15" name="q" id="q" />
+			<input type="submit" value="Go" />
+		</form>
+		</section>
+	</article>
+	{% for ig in index_groups %}
+	<article class="index-article-group ll-75-left index-group-normal">
+		<header>
+			<h2 class="zero-margin">{{ ig.title }}</h2>
+		</header>
+		<section>
+			<article>
+			{% if ig.get_current_page %}
+				{% for i in ig.get_current_page %}
+				<article class="index-article-item index-item-normal">
+					<header>
+						<h3>
+							{% for s in i.get_heading_short_split %}
+								<span>{{ s }}</span>
+								{% if forloop.counter0 == 0 or forloop.counter0 == 1 %}
+								<br/>
+								{% endif %}
+							{% endfor %}
+						</h3>
+						<div id="hot-air"></div>
+					</header>
+					<section>
+						<p><a href="{{ i.get_item_url }}">{{i.get_description_short}}</a></p>
+					</section>
+					<footer>
+						<p>
+							<span>{{ i.get_status_line }}</span>
+							<span>by {{ i.creator_user_nickname_short }}</span>
+						</p>
+					</footer>
+				</article>
+				{% endfor %}
+			{% else %}
+				<section>
+					<h3>There's nothing here!</h3>
+				</section>
+			{% endif %}
+			</article>
+			<div id="hot-air"></div>
+		</section>
+				{% if ig.is_multi_page %}
+					<footer id="index-article-page-controls" class="forms-and-options forms-query">
+						<form action="{{ ig.get_pagination_url }}" method="GET">
+							<span>{{ ig.get_link_description }}</span>						
+							<label for="p">Go To Page:</label>
+							<input type="text" size="3" id="" name="p" value="{{ ig.current_natural_page_number }}">
+							<label>/ {{ ig.max_natural_page }}</label>
+							<input type="submit" value="Go"/>
+						</form>
+						<span><a href="{{ ig.get_previous_page_url }}">{{ ig.get_previous_page_label }}</a></span>
+						<span><a href="{{ ig.get_next_page_url }}">{{ ig.get_next_page_label }}</a></span>
+						<div id="hot-air"></div>
+					</footer>
+				{% endif %}
+		<div id="hot-air"></div>
+	</article>
+	{% endfor %}
+{% endblock %}

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+{# PADS Base Template #}
+{% load static %}
+{% load tz %}
+
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=0">
+		<title>{% block title %}PADS{% endblock %}</title>
+		<link rel="stylesheet" href="{% static 'padsweb/css/pads-orlok-f2-2.css' %}"/>
+	</head>
+	<body class="zero-margin zero-padding">
+		{# Header and Navigation #}
+		<header>
+			<nav class="header-nav">
+				<ul class="nav-menu">
+					{# Options when NOT signed in #} 
+						<li id="pads-title">P.A.D.S.</li>
+					{% if not signed_in %}
+						<li><a href="{% url 'padsweb:index' %}">Index</a></li>
+						<li><a href="{% url 'padsweb:sign_up_intro' %}">Sign Up/In To Create Timers</a></li>
+					{# Options when SIGNED in #}
+					{% else %}
+						{% if user.is_anonymous %}
+							<li><a href="{% url 'padsweb:timer_new' %}">New</a></li>
+							<li><a href="{% url 'padsweb:index_personal' %}">Timers</a></li>
+							<li><a href="{% url 'padsweb:index' %}">Public</a></li>
+						{% else %}
+							<li><a href="{% url 'padsweb:timer_new' %}">New</a></li>
+							<li><a href="{% url 'padsweb:index_personal' %}">Timers</a></li>
+							<li><a href="{% url 'padsweb:index_personal_groups' %}">Groups</a></li>
+							<li><a href="{% url 'padsweb:index' %}">Public</a></li>
+						{% endif %}
+					{% endif %}
+					{# Sign Out and Options Link #}
+					{% if signed_in %}
+						<li id="user-name-display">
+							{{ user.username }}(
+							<a href="{% url 'padsweb:settings_info' %}">Setup</a> /
+							<a href="{% url 'padsweb:session_end' %}">SignOut</a>
+							)
+						</li>
+					{% endif %}
+					<div id="hot-air"></div>
+				</ul>
+				<div id="ql-password-input">
+					<div id="hot-air"></div>
+				</div>		 		
+				<div id="hot-air"></div>
+			</nav>
+		</header>
+		{# Content #}
+		<main>
+			{% if banner_text %}
+			<aside class="banner {{ banner_type }}">
+					<p class="zero-margin zero-padding">{{ banner_text }}</p>
+			</aside>
+			{% endif %}
+			{% timezone time_zone %}
+			{% block content %}{% endblock %}
+			{% endtimezone %}
+		</main>
+		{# Footer #}
+		<footer id="global-footer">
+			<p>Public Archive of &lsquo;Days Since&rsquo; Timers</p>
+			<p>
+				Jump To: <a href="{% url 'padsweb:index' %}">Public Archive</a>
+				{% if signed_in %}
+				 / <a href="{% url 'padsweb:index_personal' %}">Your Timers</a>
+				{% endif %}
+				/ <a href="{% url 'padsweb:index_personal_groups' %}">Your Groups</a>
+			</p>
+			<p>Test Version {{app_version}} &copy; 2017 Mounaiban</p>
+			<p>Your Olson time zone is {{time_zone}}</p>
+		</footer>		
+	</body>
+</html>

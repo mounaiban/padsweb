@@ -1,0 +1,135 @@
+{% extends "padsweb/padsweb.html" %}
+{# User Accounts Settings Template #}
+
+{% block title %}Personal Archive of &lsquo;Days Since&rsquo; Timers{% endblock %}
+
+{% block content %}
+		{% if signed_in %}
+			{# Quick List Options #}
+			<article class="sp-100 ll-100 item-detail">
+				<section>
+				{% if user.is_anonymous %}
+					<h1>Quick List Opened</h1>
+				{% else %}
+					<h1>{{user_nickname_short}}</h1>
+					<h2>Member Since</h2>
+					<p>{{user.user_from_db.sign_up_date_time}}</p>
+				{% endif %}
+				</section>
+			</article>
+			<article class="forms-and-options forms-help sp-100 ll-25-right">
+				<section>
+					<h1>Time Zone</h1>
+						<p>Choose from a selection of over 500 time zones,
+						including historical and test zones!</p>
+						<p>Time zones are shown in Olson format. Please use
+						the Continent/City or Ocean/City time zones when 
+						you are not hacking.</p>
+				</section>
+			</article>
+			<article class="forms-and-options forms-normal sp-100 ll-75-left">
+				<section class="forms-and-options">
+					<h2>Select Time Zone</h2>
+						<form action="{% url 'padsweb:settings_set_tz' %}" method="POST">
+							{% csrf_token %}
+							{{time_zone_form.time_zone.label_tag}}
+							{{time_zone_form.time_zone}}
+						<input type="submit" value="Change Timezone"/>
+						</form>
+				</section>
+			</article>			
+			{# Regular User Options #}
+			{% if not user.is_anonymous %}
+			<article class="forms-and-options forms-help sp-100 ll-25-right">
+				<section>
+					<h1>Timer Groups</h1>
+						<p>Create a Timer Group to organise your Timers.</p>
+						<p>To delete a Timer Group, click on the Delete button next to the name of the Group.</p>
+				</section>
+			</article>
+			<article class="forms-and-options forms-normal sp-100 ll-75-left">
+				<section class="forms-and-options">
+					<h2>Create A Timer Group</h2>
+						<form action="{% url 'padsweb:settings_new_timer_group' %}" method="POST">
+						{% csrf_token %}
+							{{new_timer_group_form.name.label_tag}}							
+							{{new_timer_group_form.name}}
+							<input type="submit" value="Create Timer Group"/>
+						</form>
+				</section>
+			</article>
+			<article class="forms-and-options forms-normal sp-100 ll-75-left">
+				<section>
+					<h2>Delete A Timer Group</h2>
+						<form action="{% url 'padsweb:settings_delete_timer_group' %}" method="POST">
+							{% csrf_token %}
+							{{delete_timer_group_form.label_tag}}
+							{{delete_timer_group_form}}
+							<input type="submit" value="Delete Timer Group"/>
+						</form>
+						<div id="hot-air"></div>
+					</form>
+				</section>
+			</article>
+			<article class="forms-and-options forms-help sp-100 ll-25-right">
+				<section>
+					<h1>Quick Lists</h1>
+					<p>You can transfer timers in a Quick List to your account.</p>
+					<p>Timers can be imported into a Timer Group.</p>
+					<p>Please be aware that the Quick List will be deleted, and its password rendered permanently
+						unusable.</p>
+				</section>
+			</article>
+			<article class="forms-and-options forms-normal sp-100 ll-75-left">
+				<section>
+					<h2>Import Quick List</h2>
+					<form action="{% url 'padsweb:settings_import_ql' %}" method="POST">
+						{% csrf_token %}
+						<div class="forms-input-label-set">
+							{{quick_list_import_form.password.label_tag}}
+							{{quick_list_import_form.password}}
+						</div>
+						<div class="forms-input-label-set">
+							{{quick_list_import_form.timer_group.label_tag}}
+							{{quick_list_import_form.timer_group}}
+						</div>
+						<input type="submit" value="Import &amp; Delete QL"/>
+					</form>
+				</section>
+			</article>	
+			<article class="forms-and-options forms-help sp-100 ll-25-right">			
+				<section>
+					<h1>Passwords</h1>
+						<p>You can change your password here when you need to.</p>
+				</section>
+			</article>
+			<article class="forms-and-options forms-normal sp-100 ll-75-left">
+				<section>
+					<h2>Change Password</h2>
+					<form action={% url 'padsweb:settings_set_password' %} method="POST">
+						{% csrf_token %}
+							{{password_change_form.user_id}}
+						<div class="forms-input-label-set">
+							{{password_change_form.old_password.label_tag}}
+							{{password_change_form.old_password}}
+						</div>
+						<div class="forms-input-label-set">
+							{{password_change_form.new_password.label_tag}}
+							{{password_change_form.new_password}}
+						</div>
+						<div class="forms-input-label-set">
+							{{password_change_form.new_password_confirm.label_tag}}
+							{{password_change_form.new_password_confirm}}
+						</div>
+						<input type="submit" value="Change Password"/>
+					</form>
+				</section>
+				{% endif %}
+		</article>
+		{% else %}
+		<div class="item-detail">
+		<h1>What are you doing here?</h1>
+			<p>Please sign in first to check your user info. You should only mess with your own account!</p>
+		</div>
+		{% endif %}
+{% endblock %}

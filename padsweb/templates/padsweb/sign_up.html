@@ -1,0 +1,81 @@
+{% extends "padsweb/padsweb.html" %}
+{# User Registration View #}
+
+{% block title %}Account Registrations at the Personal Archive of &lsquo;Days Since&rsquo; Timers{% endblock %}
+
+{% block content %}
+	<article class="forms-and-options sp-100 ll-75-left forms-normal">
+	{# Sign In Form #}
+		<section>
+			<h1>Sign In</h1>
+			<form action="{% url 'padsweb:session' %}" method="post">
+				<p>Already have an account? Sign in here!</p>
+				{% csrf_token %}
+				<div class="forms-input-label-set">
+					{{sign_in_form.username.label_tag}}
+					{{sign_in_form.username}}
+				</div>
+				<div class="forms-input-label-set">
+					{{sign_in_form.password.label_tag}}
+					{{sign_in_form.password}}
+				</div>
+				<input type="submit" value='Sign in'/>
+			</form>
+		</section>
+	</article>
+	<article class="forms-and-options sp-100 ll-25-right forms-normal">
+	{# Quick List Sign-in Form #}
+		<section>
+			<h1>Open Quick List</h1>
+				<p>If you have created a quick list, enter the password here to open it.</p>
+				<form action="{% url 'padsweb:session_quicklist' %}" method="post">
+					{% csrf_token %}
+					<div class="forms-input-label-set">
+						{{sign_in_quicklist_form.password.label_tag}}
+						{{sign_in_quicklist_form.password}}
+					</div>
+					<input type="submit" value='Open QL'/>
+				</form>
+		</section>
+	</article>
+	<article class="forms-and-options sp-100 ll-25-right forms-normal">
+	{# Quick List Creation Form #}
+		<section>
+			<h1>New Quick List</h1>
+			<form action="{% url 'padsweb:sign_up_quicklist' %}" method="post">
+				<p>A Quick List allows you to start creating your own count-up timers on PADS instantly.</p>
+				<p>A random password will be generated for you to open and edit the list.</p>
+				{% csrf_token %}
+				<input type="submit" value='Create Quick List'/>
+			</form>
+		</section>
+	</article>
+	<article class="forms-and-options sp-100 ll-75-left forms-normal">
+	{# Sign-up Form #}
+		<section>
+			<h1>Sign Up For A New Account</h1>
+			<form action="{% url 'padsweb:sign_up_user' %}" method="post">
+				<p>Sign up for a regular account accessible with a username and password.</p>
+				{% csrf_token %}
+				<div>
+					<div class="forms-input-label-set">
+						{{sign_up_form.username.label_tag}}
+						{{sign_up_form.username}}
+					</div>
+					<div class="forms-input-label-set">
+						{{sign_up_form.password.label_tag}}
+						{{sign_up_form.password}}
+					</div>
+					<div class="forms-input-label-set">
+						{{sign_up_form.password_confirm.label_tag}}
+						{{sign_up_form.password_confirm}}
+					</div>
+					<div class="forms-input-label-set">
+						<input type="submit" value='Sign Up!'/>
+					</div>
+				</div>
+			</form>
+		</section>
+		<div id="hot-air"></div>
+	</article>
+{% endblock %}
