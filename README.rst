@@ -18,17 +18,27 @@ in this personally-sanctioned version of this app.
 Requirements
 ************
 
+Minimum Requirements
+--------------------
 * Python 3.6
 * Django (1.11.12)
-* mod-wsgi (4.5.15)
-* mysqlclient (1.3.10)
 * pytz (2017.2)
 
 PADS should work with later versions of the above dependencies either
-out of the box, or with minimal changes.
+out of the box, or with minimal changes. The only reason PADS requires 
+Python 3.6 is because it uses the ``secrets`` module which was 
+introduced in this version.
 
-The only reason PADS requires Python 3.6 is because it uses the ``secrets`` 
-module which was introduced in this version.
+Optional Requirements
+---------------------
+If just the minimum requirements are met, PADS will function only 
+as a Django test application. For production-grade deployments, you
+may need to install additional packages in your Python environment 
+to make use of more sophisticated hosting solutions. Version numbers
+are recommendations only.
+
+* mod-wsgi (4.5.15), required if hosting with dedicated HTTP server software via WSGI.
+* mysqlclient (1.3.10), required if using PADS with MySQL or MariaDB.
 
 License
 *******
