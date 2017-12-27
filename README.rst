@@ -21,7 +21,7 @@ Requirements
 Minimum Requirements
 --------------------
 * Python 3.6
-* Django (1.11.12)
+* Django (1.11.2, 2.0 is not yet supported)
 * pytz (2017.2)
 
 PADS should work with later versions of the above dependencies either
