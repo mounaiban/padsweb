@@ -40,6 +40,10 @@ are recommendations only.
 * mod-wsgi (4.5.15), required if hosting with dedicated HTTP server software via WSGI.
 * mysqlclient (1.3.10), required if using PADS with MySQL or MariaDB.
 
+Installation
+************
+Instructions for basic installation for testing purposes are in the `Wiki page <https://github.com/mounaiban/padsweb/wiki/Installation-Instructions/>`_.
+
 License
 *******
 
