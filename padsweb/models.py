@@ -64,8 +64,8 @@ class PADSTimer(models.Model):
 
 class GroupInclusion(models.Model):
 	"""Through Model which determines which Groups a Timer belongs to"""
-	timer = models.ForeignKey(PADSTimer)
-	group = models.ForeignKey(PADSTimerGroup)
+	timer = models.ForeignKey(PADSTimer, on_delete=models.CASCADE)
+	group = models.ForeignKey(PADSTimerGroup, on_delete=models.CASCADE)
 
 	def __str__(self):
 		return "{0} is in {1}".format(self.timer.id, self.group.id)
@@ -77,7 +77,7 @@ class GroupInclusion(models.Model):
 
 class PADSTimerReset(models.Model):
 	"""An entry in a Timer's Reset History"""
-	timer = models.ForeignKey(PADSTimer)
+	timer = models.ForeignKey(PADSTimer, on_delete=models.CASCADE)
 	date_time = models.DateTimeField()
 	reason = models.CharField(max_length=MAX_MESSAGE_LENGTH_SHORT)
 
