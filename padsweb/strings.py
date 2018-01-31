@@ -145,7 +145,7 @@ labels_en_au_dict = {
 	'TIMER_RESET_NOTICE' : 'Timer reset ({0}).',
 	'TIMER_RESUME_NOTICE' : 'Timer restarted',
 	'TIMER_STOP_NOTICE' : 'Timer Stopped ({0})',
-	'TIMER_SUSPEND_NOTICE' : "Timer suspended ({0})",
+	'TIMER_SUSPEND_NOTICE' : 'Timer suspended ({0})',
 	'USERNAME' : 'Username:',
 	'YEAR' : 'Year',
 	}
