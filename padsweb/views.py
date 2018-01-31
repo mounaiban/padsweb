@@ -1268,8 +1268,7 @@ def settings_info(request):
 		initial_pwc = {'user_id':user.id()}
 		settings_view.add_context_item(
 			'password_change_form', PasswordChangeForm(initial=initial_pwc))
-		
-		
+				
 		# Prepare QL Import form
 		#  Get a list of the User's Timer Groups with an option to select
 		#  none of them.

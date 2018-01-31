@@ -269,7 +269,7 @@ class PADSViewUser:
 		self.user_from_db.time_zone = timezone_name
 		self.user_from_db.save()
 		return True
-		
+	
 	def import_quick_list(self, quick_list_password, **kwargs):
 		password_ql_split = self.helper.split_anon_user_password(
 			quick_list_password)
