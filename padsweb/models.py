@@ -21,7 +21,6 @@ class PADSUser(models.Model):
 	nickname = models.CharField(max_length=MAX_NAME_LENGTH_SHORT)
 	# TODO: Find out the maximum length of a tz database entry name
 	time_zone = models.CharField(max_length=MAX_NAME_LENGTH_LONG)
-	
 	def __str__(self):
 		return "{0} ({1})".format(self.nickname_short)
 	
