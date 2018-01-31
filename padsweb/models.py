@@ -47,6 +47,7 @@ class PADSTimer(models.Model):
 	public = models.BooleanField()
 	historical = models.BooleanField()
 	running = models.BooleanField()
+	permalink_code = models.CharField(max_length=TIMERS_PERMALINK_CODE_LENGTH)
 	in_groups = models.ManyToManyField(
 		PADSTimerGroup,
 		through = 'GroupInclusion',
