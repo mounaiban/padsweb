@@ -28,7 +28,10 @@
 					{% endif %}
 			
 				<h2>Owner</h2>
-					<p> {{ timer.creator_user_nickname_short }} </p></p>
+					<p>{{ timer.creator_user_nickname_short }}</p>
+				
+				<h2>Permalink</h2>
+					<p>{{ permalink_prefix }}{{ timer.get_permalink_url }}</p>
 		</section>		
 	</article>
 	
