@@ -21,7 +21,7 @@ Requirements
 Minimum Requirements
 --------------------
 * Python 3.6
-* Django (1.11.2, 2.0 is not yet supported)
+* Django (2.0)
 * pytz (2017.2)
 
 PADS should work with later versions of the above dependencies either
@@ -39,6 +39,10 @@ are recommendations only.
 
 * mod-wsgi (4.5.15), required if hosting with dedicated HTTP server software via WSGI.
 * mysqlclient (1.3.10), required if using PADS with MySQL or MariaDB.
+
+Installation
+************
+Instructions for basic installation for testing purposes are in the `Wiki page <https://github.com/mounaiban/padsweb/wiki/Installation-Instructions/>`_.
 
 License
 *******
