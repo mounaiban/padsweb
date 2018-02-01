@@ -88,13 +88,21 @@ class PADSView:
 			self.add_context_item("user", self.get_session_user())
 		
 		if self.user_present():
-			self.add_context_item('time_zone', self.get_session_user().get_timezone())
+			self.add_context_item('time_zone', 
+						 self.get_session_user().get_timezone())
 		else:
-			self.add_context_item('time_zone', timezone.get_current_timezone_name())
+			self.add_context_item('time_zone', 
+						 timezone.get_current_timezone_name())
 		
 		self.add_context_item("app_version", self.get_app_version())
 		self.add_context_item("banner_text", self.get_banner_text())
 		self.add_context_item("banner_type", self.get_banner_type())
+		# Quick way of generating the first part of the URL (scheme and
+		# host) adapted from answer by Levi Velazquez on Stack Overflow
+		# See: https://stackoverflow.com/a/37740812
+		self.add_context_item("permalink_prefix",
+					'{0}://{1}'.format(
+							self.request.scheme, self.request.get_host()))
 		
 		# Erase banners
 		self.set_banner_empty()
@@ -728,7 +736,6 @@ def timer(request, timer_id):
 				timer_group_choices=timer.get_associated_groups_for_choicefield())
 			timer_view.add_context_item(
 				'remove_timer_inclusion_form', add_timer_inclusion_form)
-			
 			timer_view.add_context_item(
 				'rename_timer_form', TimerRenameForm())
 			
@@ -747,6 +754,10 @@ def timer(request, timer_id):
 			request, messages['TIMER_SETTINGS_INVALID_REQUEST'], 
 			BANNER_FAILURE_DENIAL)
 		return HttpResponseRedirect(reverse('padsweb:index'))
+
+def timer_by_permalink(request, link_code):
+	timer_req = timer_helper.get_timer_for_view_by_permalink_code(link_code)
+	return timer(request, timer_req.id())
 
 def timer_add_to_group(request, timer_id):
 	"""Django view to request a Timer's inclusion in a Timer Group"""
