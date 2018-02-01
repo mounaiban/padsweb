@@ -6,6 +6,7 @@
 #
 
 from django.conf.urls import url
+from django.urls import path
 
 from . import views
 
@@ -55,6 +56,9 @@ urlpatterns = [
 	#
 	# Timer Detail View:
 	url(r'^timer/(?P<timer_id>[0-9]+)/$', views.timer, name='timer'),
+	# Timer Detail Vies, via Permalink
+	path('timer/link/<slug:link_code>/',
+		 views.timer_by_permalink, name='timer_by_permalink'),
 	
 	#
 	# Timer Configuration URLs
