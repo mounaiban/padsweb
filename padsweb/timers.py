@@ -21,6 +21,7 @@ from padsweb.strings import labels
 
 # Standard Library Imports
 import datetime
+import secrets # for token_urlsafe()
 
 #
 # Constants
@@ -99,6 +100,18 @@ class PADSTimerHelper:
 			return self.prepare_view_timer(timer_from_db)
 		else:
 			return None
+
+	def get_timer_for_view_by_permalink_code(self, link_code):
+		"""Returns a PADSViewTimer of a single Timer by its id.
+		Only Timers accessible by this Helper may be returned.
+		"""
+		if self.get_timers_from_db().filter(permalink_code=link_code).exists():
+			timer_from_db = self.get_timers_from_db().get(
+					permalink_code=link_code)
+			return self.prepare_view_timer(timer_from_db)
+		else:
+			return None
+
 
 	#
 	# Timer Group Methods
@@ -261,7 +274,9 @@ class PADSEditingTimerHelper(PADSTimerHelper):
 			new_timer.public = public
 			new_timer.historical = historical
 			new_timer.running = True
-			new_timer.save()
+			new_timer.permalink_code = secrets.token_urlsafe(
+					TIMERS_PERMALINK_CODE_LENGTH)
+			new_timer.save()		
 			
 			# Create a history entry to mark timer creation
 			self.new_timer_reset_history(
@@ -457,6 +472,11 @@ class PADSViewTimer:
 	
 	def get_item_url(self):
 		return reverse('padsweb:timer', kwargs={'timer_id':self.id()})
+		
+	def get_permalink_url(self):
+		link_code=self.timer_from_db.permalink_code
+		return reverse('padsweb:timer_by_permalink', 
+				 kwargs={'link_code':link_code})
 	
 	# Return groups associated with this timer
 	def get_associated_groups_from_db(self):
