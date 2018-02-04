@@ -521,6 +521,36 @@ class PADSViewTimer:
 
 	def delete(self):
 		return self.helper.delete_timer_by_id(self.id())
+
+	# Export to dictionary for easy serialisation (e.g. with json.dumps())
+	def dict(self):
+		timer_d = dict() # Timer details
+		
+		# Export history
+		reset_history = self.reset_history()
+		export_hlist = []
+		export_hitem = {}
+		for i in reset_history:
+			export_hitem['timestamp'] = i.date_time.timestamp()
+			export_hitem['reason'] = i.reason
+			export_hlist.append(export_hitem)
+
+		# Export group names
+		groups = self.get_associated_groups_from_db()
+		export_groups = []
+		for n in groups:
+			export_groups.append(n.name)
+		
+		# Export vital information
+		timer_d['description'] = self.timer_from_db.description
+		timer_d['creation_timestamp'] = self.timer_from_db.creation_date_time.timestamp()
+		timer_d['associated_groups'] = export_groups
+		timer_d['historical'] = self.timer_from_db.historical
+		timer_d['history_list'] = export_hlist
+		timer_d['permalink_code'] = self.timer_from_db.permalink_code
+		timer_d['public'] = self.timer_from_db.public
+		timer_d['running'] = self.timer_from_db.running
+		return timer_d
 	
 	def remove_from_group(self, group_id):
 		self.helper.delete_group_inclusion_by_id(self.id(), group_id)
