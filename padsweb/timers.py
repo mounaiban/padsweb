@@ -88,7 +88,7 @@ class PADSTimerHelper:
 		"""Returns a PADSSpecialViewTimerGroup containing all timers
 		accessible by this Helper.
 		"""
-		view_timers = self.get_timer_set()
+		view_timers = self.get_timers_from_db()
 		return PADSSpecialViewTimerGroup(view_timers)
 
 	def get_timer_for_view_by_id(self, timer_id):
