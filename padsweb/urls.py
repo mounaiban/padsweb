@@ -59,7 +59,10 @@ urlpatterns = [
 	# Timer Detail Vies, via Permalink
 	path('timer/link/<slug:link_code>/',
 		 views.timer_by_permalink, name='timer_by_permalink'),
-	
+	# Timer Export to JSON
+	url(r'^timer/export/(?P<timer_id>[0-9]+)/$', views.timer_export, 
+	 name='timer_export'),
+
 	#
 	# Timer Configuration URLs
 	#
