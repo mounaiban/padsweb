@@ -143,7 +143,9 @@ urlpatterns = [
 	# User Settings Import Quick List
 	url(
 		r'^setup/import_ql/$', views.settings_import_ql, 
-		name='settings_import_ql'),	
+		name='settings_import_ql'),
+	 # User Info Export to JSON
+	 url(r'^setup/export_all', views.user_export_all, name='user_export_all')
 		
 	]
 
