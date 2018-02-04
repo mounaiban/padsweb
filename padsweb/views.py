@@ -1278,6 +1278,47 @@ def user_new(request):
 	else:
 		return HttpResponseRedirect(reverse('padsweb:sign_up_intro'))
 
+def user_export_all(request):
+	"""Django View to export User Settings and all Timers created to JSON
+	"""
+	# Prepare a view object to extract User info from session 
+	#  PADSTimerView used because it has a built-in PADSTimerHelper
+	settings_view = PADSTimerView(request, dict())
+
+	if settings_view.user_present():
+		user = settings_view.get_session_user()
+		timer_helper = settings_view.timer_helper
+		
+		# Get Timers by User
+		timers_export = []
+		timers = timer_helper.get_timers_for_view_all().get_timers_all()
+		for t in timers:
+			timers_export.append(t.dict())
+		
+		# Get Timer Groups by User
+		group_names = []
+		groups = timer_helper.get_timer_groups_for_view_all()
+		for g in groups:
+			group_names.append(g.get_title())
+		
+		# Prepare user info
+		user_info = user.dict()
+		user_info['timers'] = timers_export
+		user_info['groups'] = group_names
+		
+		# Render the Template
+		response = HttpResponse(json.dumps(user_info))
+		response['content-type'] = 'application/json'
+		return response
+	
+	# Reject users who have not signed in
+	else:
+		set_banner(
+			request, messages['USER_SIGN_IN_REQUIRED'], 
+			BANNER_FAILURE_DENIAL)
+		return HttpResponseRedirect(reverse('padsweb:sign_up_intro'))
+
+
 def settings_info(request):
 	"""Django View to display User Setup Screen
 	"""
