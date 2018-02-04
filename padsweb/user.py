@@ -251,6 +251,14 @@ class PADSViewUser:
 	def check_password(self, password):
 		return self.helper.password_hasher.verify(
 			password, self.user_from_db.password_hash)
+	
+	# Export to dictionary for easy serialisation (e.g. with json.dumps())
+	def dict(self):
+		user_d = {}
+		user_d['nickname_short'] = self.user_from_db.nickname
+		user_d['nickname'] = self.user_from_db.nickname
+		user_d['time_zone'] = self.get_timezone()
+		return user_d
 		
 	def get_timezone(self):
 		return self.user_from_db.time_zone
