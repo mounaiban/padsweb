@@ -6,7 +6,7 @@
 #
 
 # App Metadata
-PADS_CURRENT_VERSION = '0.5835'
+PADS_CURRENT_VERSION = '0.585'
 
 # App Miscellaneous Settings
 MAX_NAME_LENGTH_SHORT = 24
