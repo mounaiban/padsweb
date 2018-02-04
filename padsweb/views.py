@@ -20,6 +20,7 @@ from padsweb.strings import messages
 from padsweb.timers import *
 from padsweb.user import *
 import pytz  # For pytz.timezone() tzinfo object lookup
+import json  # For json.dumps()
 
 #
 # Constants
@@ -916,6 +917,35 @@ def timer_del(request, timer_id):
 			 BANNER_FAILURE_DENIAL)
 
 	return HttpResponseRedirect(reverse('padsweb:index'))
+
+def timer_export(request, timer_id):
+	# Prepare a view object to extract User info from session 
+	timer_view = PADSTimerDetailView(request, timer_id)
+	
+	# GET Requests return the Timer's details in JSON
+	if request.method == "GET":
+		
+		timer = timer_view.timer
+		# Success
+		if timer:
+			timer_view = PADSTimerView(request, timer_id)
+			response = HttpResponse(json.dumps(timer.dict()))
+			response['content-type'] = 'application/json'
+			return response
+		
+		# Failure
+		else:
+			set_banner(
+				request, messages['TIMER_NOT_FOUND'],
+				 BANNER_FAILURE_DENIAL)
+			return HttpResponseRedirect(reverse('padsweb:index'))
+
+	# Non-GET Requests redirect to the index
+	else:
+		set_banner(
+			request, messages['TIMER_SETTINGS_INVALID_REQUEST'], 
+			BANNER_FAILURE_DENIAL)
+		return HttpResponseRedirect(reverse('padsweb:index'))
 	
 def timer_reset(request, timer_id):
 	if request.method == "POST":
