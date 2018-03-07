@@ -12,9 +12,10 @@ from django.utils import timezone
 from django.urls import reverse
 from padsweb.settings import *
 from padsweb.strings import labels, messages
-from padsweb.user import *
-from padsweb.urls import *
-from padsweb.views import *
+from padsweb.user import PADSUserHelper
+from padsweb.timers import PADSEditingTimerHelper, PADSTimerHelper
+from padsweb.views import PADSTimerEditView, PADSView
+import datetime
 
 #
 # Shared Test Data
