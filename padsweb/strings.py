@@ -84,7 +84,7 @@ class PADSStringDictionary:
         has_inf_loop = None
         if self.infinite_loop:
             has_inf_loop = '(has Infinite Loop)'
-        return ''.join([pre_output, inf_loop])
+        return ''.join([pre_output, has_inf_loop])
 
 #
 #
