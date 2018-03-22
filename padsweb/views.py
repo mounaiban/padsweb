@@ -14,6 +14,7 @@ from django.http import HttpResponse, HttpResponseRedirect, HttpRequest
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.generic.base import TemplateView
 from padsweb.forms import *
 from padsweb.settings import *
 from padsweb.strings import messages
@@ -35,7 +36,7 @@ user_helper = PADSUserHelper()
 # View Classes
 #
 
-class PADSView:
+class PADSView(TemplateView):
     def get_session_user_id(self):
         session_user_id = (
             self.request.session.get('user_id', INVALID_SESSION_ID))
