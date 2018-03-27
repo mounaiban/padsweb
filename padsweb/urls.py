@@ -71,8 +71,7 @@ urlpatterns = [
     url(r'^timer/(?P<timer_id>[0-9]+)/unshare/$', views.timer_unshare, 
         name='timer_unshare'),
     # Timer Rename    
-    url(
-        r'^timer/(?P<timer_id>[0-9]+)/rename/$', views.timer_rename, 
+    url(r'^timer/(?P<timer_id>[0-9]+)/rename/$', views.timer_rename, 
         name='timer_rename'),    
     # Timer Suspend / Stop
     url(r'^timer/(?P<timer_id>[0-9]+)/stop/$', views.timer_stop, 
