@@ -15,7 +15,9 @@ app_metadata = {
         'current_version' : '0.590',
         }
 
-defaults_content = {}
+defaults_content = {
+        'user_id_signed_out' : -1 # User id when no User has signed in
+        }
 defaults = PADSStringDictionary(defaults_content,
                                 "PADS Hard-coded Default Settings")
 
