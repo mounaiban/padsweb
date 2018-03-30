@@ -16,7 +16,8 @@ app_metadata = {
         }
 
 defaults_content = {
-        'user_id_signed_out' : -1 # User id when no User has signed in
+        'view_items_per_page' : 6,
+        'user_id_signed_out' : -1, # User id when no User has signed in
         }
 defaults = PADSStringDictionary(defaults_content,
                                 "PADS Hard-coded Default Settings")
