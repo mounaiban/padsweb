@@ -19,7 +19,7 @@ from padsweb.forms import *
 from padsweb.settings import *
 from padsweb.strings import messages
 from padsweb.timers import *
-from padsweb.user import *
+from padsweb.user import PADSUserHelper, PADSViewUser
 import pytz  # For pytz.timezone() tzinfo object lookup
 import json  # For json.dumps()
 
@@ -28,6 +28,7 @@ import json  # For json.dumps()
 #
 
 # View-Global Objects
+settings = defaults
 timer_helper = PADSTimerHelper()
 public_timer_helper = PADSPublicTimerHelper()
 user_helper = PADSUserHelper()
@@ -272,6 +273,212 @@ class PADSTimerGroupIndexView(PADSTimerView):
         self.natural_page_number = request.GET.get('p')
         super().__init__(request, dict())
 
+class PADSPaginatedView(TemplateView):
+    """Main View Class for PADS. Contains methods for user session detection,
+    banner display, pagination and version information.
+    """
+    
+    # By default, only the GET method is permitted
+    http_method_names = ['get']
+
+    #
+    # User session identification and management methods
+    #
+    def set_user_id_from_session(self, request):
+        """Returns User information from the session if the User is already 
+        signed in, and assigns the user to the View object. A default user id
+        is assigned if no user has signed in.
+        """
+        user_id = request.session.get('user_id', 
+                                      settings('user_id_signed_out'))
+        self.user_id = user_id
+    
+    def get_user_id(self):
+        """Returns the User Id assigned to the view
+        """
+        return self.user_id
+        
+    def user_present(self):
+        """Checks if a user id has been assigned
+        """
+        return self.current_user_id != settings['user_id_signed_out']
+
+    # 
+    # Banner management methods
+    #
+    def set_banner_empty_in_session(self):
+        """Clears the banner from the session variables of the request 
+        associated with this view
+        """
+        del self.request.session['banner_type']
+        del self.request.session['banner_text']
+        
+    def set_banner_from_session(self, request):
+        """Attempts to set up a banner on the view from session data in the 
+        incoming HTTP request. Banners are contained in the 'banner_type' 
+        (CSS formatting class) and 'banner_text' (text content) key values in 
+        the session.
+        """
+        self.banner_type = request.session.get('banner_type')
+        self.banner_text = request.session.get('banner_text')
+        self.set_banner_empty_in_session()
+            
+    #
+    # Pagination and data display methods
+    # These methods are to be implemented by the view object
+    #
+    def get_page(self, page=0):
+        return self.view_object.get_page(page)
+
+    def get_first_page(self):
+        return self.view_object.page()
+
+    def get_natural_page(self, page=1):
+        # First page is 1, get the first page by default
+        if page <= 0:
+            # Automatically get the first page if 0 is entered
+            req_page = self.get_first_page() 
+        else:
+            req_page = self.get_page(page - 1)
+        return req_page               
+
+    def get_previous_page_url(self):
+        if len(self.view_object.get_url_prefix()) > 0:
+            return self.get_page_url(self.get_previous_page_number())
+        else:
+            return None
+    
+    def get_previous_page_label(self):
+        if self.at_first_page():
+            return None
+        else:
+            return '<'
+
+    def get_previous_natural_page_number(self):
+        if self.is_at_first_page():
+            return 0
+        else:
+            return self.view_object.get_current_natural_page_number() - 1
+    
+    def get_url_prefix(self):
+        return self.view_object.get_url_prefix()
+    
+    def get_page_url(self, n):
+        return self.view_object.get_page_url()
+
+    def get_next_natural_page(self):
+        if self.at_last_page():
+            return self.max_page()
+        else:
+            return self.current_natural_page_number() + 1
+
+    def get_next_page_url(self):
+        tg_url = self.get_pagination_url()
+        if len(tg_url) > 0:
+            return '{0}?p={1}'.format(
+                tg_url, self.get_next_natural_page())
+        else:
+            return None
+
+    def get_next_page_label(self):
+        if self.is_at_last_page():
+            return None
+        else:
+            return '>'
+
+    #
+    # Status query methods
+    #
+    def count(self):
+        """Returns the number of items in the view object bound to the view
+        """
+        return self.view_object.count()
+    
+    def get_max_page_number(self):
+        return self.view_object.get_max_page_number()
+
+    def get_max_natural_page_number(self):
+        return self.view_object.max_page_number() + 1
+    
+    def is_at_last_page(self):
+        return self.current_page == 0
+    
+    def is_at_first_page(self):
+        return self.current_page == self.view_object.get_max_page_number()
+
+    def is_multi_page(self):
+        return self.view_object.is_multi_page()
+    
+    def has_small_last_page(self):
+        """Determines if the last page will contain less than a third of the 
+        page size's number of items.
+        """
+        return (self.count() % self.page_size) <= int(self.page_size / 3)
+    
+    #
+    # App metadata retrieval methods
+    #
+    def get_app_version(self):
+        return app_metadata['current_version']
+    
+    def get_permalink_prefix(self, request):
+        # Quick way of generating the first part of the URL (scheme and
+        # host) adapted from answer by Levi Velazquez on Stack Overflow
+        # See: https://stackoverflow.com/a/37740812
+        return '{0}://{1}'.format(
+                self.request.scheme, self.request.get_host())
+
+    #
+    # HTTP request and response methods
+    #
+    def get(self, request, *args, **kwargs):
+        self.set_user_id_from_session()
+    
+    # TODO: Implement custom error handler in http_method_not_allowed()
+    
+    #
+    # View Object Context Management stuff and Local Variables
+    #
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['user_id'] = self.get_user_id()
+        context['signed_in'] = self.user_present()
+        if self.user_present():
+            vuser = self.user_helper.get_user_for_view_by_id(
+                    self.get_user_id())
+            context['user'] = vuser
+            context['time_zone'] = vuser.get_timezone()
+        else:
+            self.add_context_item('time_zone', 
+                         timezone.get_current_timezone_name())
+        
+        context['app_version'] = self.get_app_version()
+        context['banner_text'] = self.banner_text()
+        context['banner_type'] = self.get_banner_type()
+        context["permalink_prefix"] = self.get_permalink_prefix()
+        
+        return context
+
+    def __init__(self, **kwargs):
+        """View superclass from which other PADS View Classes are derived.
+        At a minimum, PADSPaginatedView requires the following for proper 
+        operation:
+            
+            1. A PADSUserHelper object, for getting user information.
+            2. A view object that contains information to show to the User,
+               controllable using the Pagination Methods defined in this 
+               class.
+        """
+        self.banner_text = None
+        self.banner_type = None
+        self.current_page = 0
+        self.current_user_id = settings['user_id_signed_out']
+        self.items_per_page = settings['view_items_per_page']
+        self.request = None
+        self.user_helper = kwargs.get('user_helper', PADSUserHelper())
+        self.view_object = kwargs.get('view_object')
+
+    
 #
 # View Functions
 #
