@@ -60,7 +60,7 @@ urlpatterns = [
     url(r'^timer/new/$', views.timer_new, name='timer_new'),
     # Set Timer Groups
     url(r'^timer/(?P<timer_id>[0-9]+)/set_groups/$', 
-        views.timer_set_groups, name='timer_set_groups'
+        views.timer_set_groups, name='timer_set_groups'),
     # Timer Delete    
     url(r'^timer/(?P<timer_id>[0-9]+)/delete/$', views.timer_del, 
         name='timer_del'),
