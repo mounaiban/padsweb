@@ -207,3 +207,8 @@ class TimeZoneForm(forms.Form):
         label=labels['TIME_ZONE'],
         choices=get_timezones_all(),)
 
+class TimerGroupNamesForm(forms.Form):
+    text_line = forms.CharField(
+            label=labels['TIMER_GROUP_FIELD'],
+            max_length=MAX_MESSAGE_LENGTH_SHORT,
+            min_length=1,)
