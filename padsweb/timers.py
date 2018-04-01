@@ -495,6 +495,16 @@ class PADSViewTimer:
         return self.helper.prepare_view_timer_group_list(
             self.get_associated_groups_from_db())
     
+    def get_associated_group_names_as_str(self):
+        associated_groups = self.get_associated_groups_from_db()
+        # TODO: Move hard-coded separator character into settings dictionary
+        names = ''
+        for tg in associated_groups:
+            names = ''.join([names, ' ', tg.name])
+        
+        # TODO: Find a way of building strings without having to lstrip
+        return names.lstrip(' ')
+            
     def get_associated_groups_for_choicefield(self):
         associated_groups = self.get_associated_groups_from_db()
         # TODO: Find a more efficient way of doing this
@@ -536,17 +546,18 @@ class PADSViewTimer:
         
         # Generate a list of names from string
         # TODO: Move separator character into a configuration variable
-        names_set = names.split(' ')
+        names_set = set(names.split(' '))
                 
         with transaction.atomic():
             self.remove_from_all_groups()
             for name in names_set:
-                old_group = self.helper.get_timer_group_for_view_by_name(name)
-                if old_group is None:
-                    new_group_id = self.helper.new_timer_group(name)                    
-                    self.add_to_group(new_group_id)
-                else:
-                    self.add_to_group(old_group.id())
+                if not str_is_empty_or_space(name):
+                    old_group = self.helper.get_timer_group_for_view_by_name(name)
+                    if old_group is None:
+                        new_group_id = self.helper.new_timer_group(name)                    
+                        self.add_to_group(new_group_id)
+                    else:
+                        self.add_to_group(old_group.id())
         return True
         
     def delete(self):
