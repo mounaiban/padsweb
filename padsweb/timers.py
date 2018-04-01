@@ -124,6 +124,14 @@ class PADSTimerHelper:
         else:
             return None
     
+    def get_timer_group_for_view_by_name(self, group_name):
+        if self.get_timer_groups_from_db().filter(name=group_name).exists():
+            group_from_db = self.get_timer_groups_from_db().get(
+                    name=group_name)
+            return PADSViewTimerGroup(group_from_db, self)
+        else:
+            return None
+    
     def get_timer_groups_for_view_all(self):
         timer_groups_from_db = self.get_timer_groups_from_db()
         view_timer_groups = self.prepare_view_timer_group_list(
@@ -480,14 +488,24 @@ class PADSViewTimer:
     
     # Return groups associated with this timer
     def get_associated_groups_from_db(self):
-        # explain the db wizardry here
+        # TODO: explain the db wizardry here
         return list(self.timer_from_db.in_groups.all().order_by("name"))
     
     def get_associated_view_groups(self):
         return self.helper.prepare_view_timer_group_list(
             self.get_associated_groups_from_db())
     
-    def get_associated_groups_for_choicefield(self):
+    def get_associated_group_names_as_str(self):
+        associated_groups = self.get_associated_groups_from_db()
+        # TODO: Move hard-coded separator character into settings dictionary
+        names = ''
+        for tg in associated_groups:
+            names = ''.join([names, ' ', tg.name])
+        
+        # TODO: Find a way of building strings without having to lstrip
+        return names.lstrip(' ')
+
+      def get_associated_groups_for_choicefield(self):
         associated_groups = self.get_associated_groups_from_db()
         # TODO: Find a more efficient way of doing this
         view_group_choices = []
@@ -519,6 +537,29 @@ class PADSViewTimer:
         self.helper.new_group_inclusion_by_id(self.id(), group_id)
         return True
 
+    def set_groups_by_name(self, names):
+        """Attempts to assign a Timer to Timer Groups specified by a delimited
+        string 'names', and removes it from Groups not specified in the string.
+        If a group does not exist, it will be automatically created.
+        """
+        # TODO: Find a more efficient way of implementing this method
+        
+        # Generate a list of names from string
+        # TODO: Move separator character into a configuration variable
+        names_set = set(names.split(' '))
+                
+        with transaction.atomic():
+            self.remove_from_all_groups()
+            for name in names_set:
+                if not str_is_empty_or_space(name):
+                    old_group = self.helper.get_timer_group_for_view_by_name(name)
+                    if old_group is None:
+                        new_group_id = self.helper.new_timer_group(name)                    
+                        self.add_to_group(new_group_id)
+                    else:
+                        self.add_to_group(old_group.id())
+        return True
+        
     def delete(self):
         return self.helper.delete_timer_by_id(self.id())
 
@@ -554,6 +595,15 @@ class PADSViewTimer:
     
     def remove_from_group(self, group_id):
         self.helper.delete_group_inclusion_by_id(self.id(), group_id)
+        return True
+    
+    def remove_from_all_groups(self):
+        with transaction.atomic():
+            # Get list of Timer Groups
+            assoc_groups = self.get_associated_groups_from_db()
+            # Remove Timer from all Groups
+            for group in assoc_groups:
+                self.remove_from_group(group.id)
         return True
     
     def id(self):

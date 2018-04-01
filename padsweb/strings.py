@@ -139,6 +139,7 @@ labels_en_au_dict = {
     'TIMER_GROUP_DEFAULT_LONGEST_RUNNING_TITLE' : "Longest Running Timers",
     'TIMER_GROUP_DEFAULT_SHORTEST_RUNNING_TITLE' : "Recently Reset Timers",
     'TIMER_GROUP_DEFAULT_NEWEST_TITLE' : "Newest Timers",
+    'TIMER_GROUP_FIELD' : "Timer Groups",
     'TIMER_GROUP_PERSONAL_INDEX_TITLE' : 'All Your Timers',
     'TIMER_LT_ONE_MINUTE' : 'Just Now',
     'TIMER_RENAME_NOTICE' : 'Timer description changed to: {0}',
@@ -182,6 +183,9 @@ messages_en_au_dict = {
 
         'TIMER_SETTINGS_ADDED_TO_GROUP'
             : '''Your Timer has been added to the group.''',
+
+        'TIMER_SETTINGS_GROUPS_SET'
+            : '''Your Timer has been assigned to the groups.''',
 
         'TIMER_SETTINGS_DESC_CHANGED'
             : '''Your Timer's description has been changed to: {0}''',
