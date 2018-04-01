@@ -40,6 +40,12 @@ class TimerGroupForm(forms.Form):
         self.fields['timer_group'].choices.extend(
             timer_group_choices)
 
+class TimerGroupNamesForm(forms.Form):
+    group_names = forms.CharField(
+            label=labels['TIMER_GROUP_FIELD'],
+            max_length=MAX_MESSAGE_LENGTH_SHORT,
+            min_length=1,)
+
 class QuickListImportForm(TimerGroupForm):
     password = forms.CharField(
         label=labels['PASSWORD_QL'],
@@ -206,9 +212,3 @@ class TimeZoneForm(forms.Form):
     time_zone = forms.ChoiceField(
         label=labels['TIME_ZONE'],
         choices=get_timezones_all(),)
-
-class TimerGroupNamesForm(forms.Form):
-    text_line = forms.CharField(
-            label=labels['TIMER_GROUP_FIELD'],
-            max_length=MAX_MESSAGE_LENGTH_SHORT,
-            min_length=1,)
