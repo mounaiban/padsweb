@@ -101,6 +101,10 @@ urlpatterns = [
         r'^timer/(?P<timer_id>[0-9]+)/remove_from_group/$', 
         views.timer_remove_from_group, name='timer_remove_from_group'),    
     
+    # Set Timer Groups
+    url(r'^timer/(?P<timer_id>[0-9]+)/set_groups/$', 
+        views.timer_set_groups, name='timer_set_groups'),
+        
     #
     # User Account URLs
     #
