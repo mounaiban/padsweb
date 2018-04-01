@@ -5,6 +5,28 @@
 #
 #
 
+from padsweb.strings import PADSStringDictionary
+
+#
+# Hard-coded configuration in dictionary
+#
+app_metadata = {
+        'copyright_message_html' : '&copy; 2018 Mounaiban',
+        'current_version' : '0.590',
+        }
+
+defaults_content = {
+        'view_items_per_page' : 6,
+        'user_id_signed_out' : -1, # User id when no User has signed in
+        }
+defaults = PADSStringDictionary(defaults_content,
+                                "PADS Hard-coded Default Settings")
+
+#
+# Hard-coded configuration in separate constants
+# TODO: Migrate codebase to use dictionary only, then remove these constants
+#
+
 # App Metadata
 PADS_CURRENT_VERSION = '0.585'
 
