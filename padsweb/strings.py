@@ -184,6 +184,9 @@ messages_en_au_dict = {
         'TIMER_SETTINGS_ADDED_TO_GROUP'
             : '''Your Timer has been added to the group.''',
 
+        'TIMER_SETTINGS_GROUPS_SET'
+            : '''Your Timer has been assigned to the groups.''',
+
         'TIMER_SETTINGS_DESC_CHANGED'
             : '''Your Timer's description has been changed to: {0}''',
 
