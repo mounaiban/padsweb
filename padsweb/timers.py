@@ -505,7 +505,7 @@ class PADSViewTimer:
         # TODO: Find a way of building strings without having to lstrip
         return names.lstrip(' ')
 
-      def get_associated_groups_for_choicefield(self):
+    def get_associated_groups_for_choicefield(self):
         associated_groups = self.get_associated_groups_from_db()
         # TODO: Find a more efficient way of doing this
         view_group_choices = []
