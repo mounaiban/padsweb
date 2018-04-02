@@ -16,7 +16,7 @@ os.chdir(os.path.normpath(os.path.join(
 
 setup(
     name='django-padsweb',
-    version='0.5833',
+    version='0.587',
     packages=find_packages(),
     include_package_data=True,
     description='''Yet another long-term stopwatch web app. Works just 
