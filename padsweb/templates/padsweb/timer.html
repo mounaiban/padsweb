@@ -173,21 +173,22 @@
 			<article class="forms-and-options sp-100 ll-75-left forms-normal">
 				<section>
 					<h2>Groups</h2>
-					<h2>This Timer is in the following Groups</h2>
-						<form action="{% url 'padsweb:timer_remove_from_group' timer.id %}" method="POST">
+					<h2>Enter Timer Groups</h2>
+						<form action="{% url 'padsweb:timer_set_groups' timer.id %}" method="POST">
+    						<p>
+        						Please enter names of all Timer Groups you want to include
+                				this timer in, separated by spaces. Timer Groups will be 
+                				automatically created for you.
+        					</p>
 							{% csrf_token %}
-							{{ remove_timer_inclusion_form.timer_group.label_tag }}
-							{{ remove_timer_inclusion_form.timer_group }}							
-							<input type="submit" value="Remove from Group" />
-						</form>
-						<h2>Add Timer to a Group</h2>
-						<form action="{% url 'padsweb:timer_add_to_group' timer.id %}" method="POST">
-							{% csrf_token %}
-							{{ add_timer_inclusion_form.timer_group.label_tag }}
-							{{ add_timer_inclusion_form.timer_group }}
-							<input type="submit" value="Add to Group"/>
-							<p> To create timer groups, <a href="{% url 'padsweb:settings_info' %}">go to your Options page.</a></p>
-						</form>
+							{{ set_timer_inclusions_form.group_names.label_tag }}
+							{{ set_timer_inclusions_form.group_names }}
+							<input type="submit" value="Set Timer Groups" />
+							<p>
+        							To see a list of groups created for you, or to delete
+        							them, <a href="{% url 'padsweb:settings_info' %}">go to your Options page.</a>
+							</p>
+						</form>        					
 				</section>
 			</article>
 		{% endif %}

@@ -174,6 +174,18 @@ class TestUser:
         self.last_response = response
         return response
 
+    def timer_set_groups(self, timer_id, timer_group_names):
+        # Assigns a Timer to Timer Groups specified by name. Groups should be
+        # automatically created if they have not been so. The Timer will also
+        # be removed from unspecified Groups if there are existing inclusions.
+        
+        url_timer_set_groups = reverse(
+                'padsweb:timer_set_groups', kwargs={'timer_id':timer_id})
+        req_body_tg_set = {'group_names' : timer_group_names}
+        response = self.client.post(url_timer_set_groups, req_body_tg_set)
+        self.last_response = response
+        return response
+
     def timer_delete(self, timer_id):
         # Deletes a Timer
         
@@ -1592,7 +1604,6 @@ class TimerGroupTests(TestCase):
             cls.timer_group_u2g1_name)
         cls.timer_group_u2g1_id = get_session_value(
             resp_new_timer_group, 'last_new_item_id')
-        
     
     def test_new_group(self):
         """A signed-in User should succeed in creating a Timer Group.
@@ -1636,7 +1647,7 @@ class TimerGroupTests(TestCase):
         # Assertions
         #  There should be no new Timer Groups in the Database
         self.assertEqual(new_group_count, 0)
-        
+              
     def test_delete_group(self):
         """A signed-in User should succeed in deleting a group timer owned
         by the User.

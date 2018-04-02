@@ -48,7 +48,7 @@ urlpatterns = [
     url(r'^timer/(?P<timer_id>[0-9]+)/$', views.timer, name='timer'),
     # Timer Detail Vies, via Permalink
     path('timer/link/<slug:link_code>/',
-         views.timer_by_permalink, name='timer_by_permalink'),
+        views.timer_by_permalink, name='timer_by_permalink'),
     # Timer Export to JSON
     url(r'^timer/export/(?P<timer_id>[0-9]+)/$', views.timer_export, 
         name='timer_export'),
@@ -58,7 +58,10 @@ urlpatterns = [
     #
     # Timer Creation
     url(r'^timer/new/$', views.timer_new, name='timer_new'),
-    # Timer Delete
+    # Set Timer Groups
+    url(r'^timer/(?P<timer_id>[0-9]+)/set_groups/$', 
+        views.timer_set_groups, name='timer_set_groups'),
+    # Timer Delete    
     url(r'^timer/(?P<timer_id>[0-9]+)/delete/$', views.timer_del, 
         name='timer_del'),
     # Timer Reset

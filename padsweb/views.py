@@ -478,7 +478,6 @@ class PADSPaginatedView(TemplateView):
         self.user_helper = kwargs.get('user_helper', PADSUserHelper())
         self.view_object = kwargs.get('view_object')
 
-    
 #
 # View Functions
 #
@@ -934,20 +933,13 @@ def timer(request, timer_id):
         # Success
         if timer:
             
-            # Prepare the Add Timer To Group Form
-            add_timer_inclusion_form = TimerGroupForm(
-                timer_group_choices=timer.get_available_groups_for_choicefield())
-            timer_view.add_context_item(
-                'add_timer_inclusion_form', add_timer_inclusion_form)
-                
-            # Prepare the Remove Timer From Group Form
-            add_timer_inclusion_form = TimerGroupForm(
-                timer_group_choices=timer.get_associated_groups_for_choicefield())
-            timer_view.add_context_item(
-                'remove_timer_inclusion_form', add_timer_inclusion_form)
-            timer_view.add_context_item(
-                'rename_timer_form', TimerRenameForm())
-            
+            # Prepare the Set Timer Groups by Name Form
+            assoc_group_names = timer.get_associated_group_names_as_str()
+            set_timer_inclusions_form = TimerGroupNamesForm(
+                    initial={'group_names': assoc_group_names})
+            timer_view.add_context_item('set_timer_inclusions_form', 
+                                        set_timer_inclusions_form)
+                        
             return timer_view.render_template()
         
         # Failure
@@ -967,6 +959,65 @@ def timer(request, timer_id):
 def timer_by_permalink(request, link_code):
     timer_req = timer_helper.get_timer_for_view_by_permalink_code(link_code)
     return timer(request, timer_req.id())
+
+def timer_set_groups(request, timer_id):
+    """Django view to assign a Timer's inclusions in a Timer Groups
+    by group names. The names are to be specified in a single space-delimited
+    string.
+    """ 
+    if request.method == "POST":
+        form_data = TimerGroupNamesForm(request.POST)
+        dummy_view = PADSTimerEditView(request, timer_id)
+        dummy_view.prepare_context()
+        if dummy_view.user_present():
+            timer = dummy_view.get_timer()
+            if timer:
+                
+                # Valid Form Data                
+                if form_data.is_valid():
+                    # Success
+                    group_names = form_data.cleaned_data['group_names']
+                    if timer.set_groups_by_name(group_names):
+                        set_banner(
+                            request, messages['TIMER_SETTINGS_GROUPS_SET'], 
+                            BANNER_INFO)
+                        
+                    # Failure
+                    else:
+                        set_banner(
+                            request, messages['TIMER_SETTINGS_SAVE_ERROR'], 
+                            BANNER_FAILURE_ERROR)
+                
+                # Invalid form data received
+                else:
+                    set_banner(
+                        request, messages['TIMER_SETTINGS_INVALID_REQUEST'],
+                         BANNER_FAILURE_DENIAL)
+                    dummy_view.redirect_to_timer()
+                    
+            # Timer not found or available
+            else:
+                set_banner(
+                    request, messages['TIMER_NOT_FOUND'], 
+                    BANNER_FAILURE_DENIAL)
+                return HttpResponseRedirect(reverse('padsweb:index'))
+        
+        # Edit mode not enabled (current User id doesn't match)
+        # creator User's id, or not signed in.
+        else:
+            set_banner(
+                request, messages['TIMER_SETTINGS_WRONG_USER'], 
+                BANNER_FAILURE_DENIAL)
+
+    # Handle non-POST requests
+    else:
+        set_banner(
+            request, messages['TIMER_SETTINGS_INVALID_REQUEST'],
+             BANNER_FAILURE_DENIAL)
+        return HttpResponseRedirect(reverse('padsweb:index'))
+
+    # Return to the timer detail view by default
+    return dummy_view.redirect_to_timer()
 
 def timer_add_to_group(request, timer_id):
     """Django view to request a Timer's inclusion in a Timer Group"""
