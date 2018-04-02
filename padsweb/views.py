@@ -939,21 +939,7 @@ def timer(request, timer_id):
                     initial={'group_names': assoc_group_names})
             timer_view.add_context_item('set_timer_inclusions_form', 
                                         set_timer_inclusions_form)
-            
-            # Prepare the Add Timer To Group Form
-            add_timer_inclusion_form = TimerGroupForm(
-                timer_group_choices=timer.get_available_groups_for_choicefield())
-            timer_view.add_context_item(
-                'add_timer_inclusion_form', add_timer_inclusion_form)
-                
-            # Prepare the Remove Timer From Group Form
-            add_timer_inclusion_form = TimerGroupForm(
-                timer_group_choices=timer.get_associated_groups_for_choicefield())
-            timer_view.add_context_item(
-                'remove_timer_inclusion_form', add_timer_inclusion_form)
-            timer_view.add_context_item(
-                'rename_timer_form', TimerRenameForm())
-            
+                        
             return timer_view.render_template()
         
         # Failure
