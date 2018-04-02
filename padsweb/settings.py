@@ -28,7 +28,7 @@ defaults = PADSStringDictionary(defaults_content,
 #
 
 # App Metadata
-PADS_CURRENT_VERSION = '0.585'
+PADS_CURRENT_VERSION = '0.587'
 
 # App Miscellaneous Settings
 MAX_NAME_LENGTH_SHORT = 24
