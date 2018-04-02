@@ -43,19 +43,16 @@
 			<article class="forms-and-options forms-help sp-100 ll-25-right">
 				<section>
 					<h1>Timer Groups</h1>
-						<p>Create a Timer Group to organise your Timers.</p>
-						<p>To delete a Timer Group, click on the Delete button next to the name of the Group.</p>
-				</section>
-			</article>
-			<article class="forms-and-options forms-normal sp-100 ll-75-left">
-				<section class="forms-and-options">
-					<h2>Create A Timer Group</h2>
-						<form action="{% url 'padsweb:settings_new_timer_group' %}" method="POST">
-						{% csrf_token %}
-							{{new_timer_group_form.name.label_tag}}							
-							{{new_timer_group_form.name}}
-							<input type="submit" value="Create Timer Group"/>
-						</form>
+						<p>
+        						Timer Groups are used to organise your Timers.
+        						They are automatically created for you when you assign group
+        						names to a Timer.
+						</p>
+						<p>
+        						To delete a Timer Group, select a group from the list, and
+        						then press the Delete button. Deleting a group only unassigns
+        						Timers from the deleted Group.
+        					</p>
 				</section>
 			</article>
 			<article class="forms-and-options forms-normal sp-100 ll-75-left">
