@@ -1604,7 +1604,6 @@ class TimerGroupTests(TestCase):
             cls.timer_group_u2g1_name)
         cls.timer_group_u2g1_id = get_session_value(
             resp_new_timer_group, 'last_new_item_id')
-        
     
     def test_new_group(self):
         """A signed-in User should succeed in creating a Timer Group.
@@ -1648,7 +1647,7 @@ class TimerGroupTests(TestCase):
         # Assertions
         #  There should be no new Timer Groups in the Database
         self.assertEqual(new_group_count, 0)
-        
+              
     def test_delete_group(self):
         """A signed-in User should succeed in deleting a group timer owned
         by the User.
