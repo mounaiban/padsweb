@@ -17,6 +17,9 @@ app_metadata = {
         }
 
 defaults_content = {
+        'name_max_length_short' : 24,
+        'name_max_length_long' : 255,
+        'message_max_length_short' : 280,   # Two Tweets
         # The letter 'O' and number '1' are omitted
         'ql_password_letters' : 'ABCDEFGHIJKLMNPQRSTUVWXYZ234567890',
         'ql_password_length' : 8,
@@ -24,6 +27,9 @@ defaults_content = {
         'ql_password_seg_separator' : '-',
         'ql_user_name_suffix_length' : 12,
         'password_salt_bytes' : 48,
+        'timer_recent_max_age' : 7,
+        'timer_description_length_short' : 140, # One Tweet
+        'timer_permalink_code_length' : 10,
         'user_id_signed_out' : -1, # User id when no User has signed in
         'view_items_per_page' : 6,
         }
