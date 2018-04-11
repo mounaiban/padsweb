@@ -26,7 +26,7 @@ class PADSUser(models.Model):
     time_zone = models.CharField(
             max_length=settings['name_max_length_long'])
     def __str__(self):
-        return "{0} ({1})".format(self.nickname_short)
+        return "{0} ({1})".format(self.nickname_short, self.nickname)
     
 
 class PADSTimerGroup(models.Model):
