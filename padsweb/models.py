@@ -18,11 +18,11 @@ class PADSUser(models.Model):
     # The Short Nickname is to enforce the use of ASCII-friendly
     # nicknames for signing in. 
     nickname_short = models.SlugField(
-            max_length=settings['message_max_length_short'], unique=True)
+            max_length=settings['name_max_length_short'], unique=True)
     # The Nickname allows Users to identify themselves using names with 
     # non-ASCII characters to other users.
     nickname = models.CharField(
-            max_length=settings['message_max_length_short'])
+            max_length=settings['name_max_length_long'])
     # TODO: Find out the maximum length of a tz database entry name
     time_zone = models.CharField(
             max_length=settings['name_max_length_long'])
