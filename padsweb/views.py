@@ -273,6 +273,9 @@ class PADSTimerGroupIndexView(PADSTimerView):
         self.natural_page_number = request.GET.get('p')
         super().__init__(request, dict())
 
+#
+# 0.59 Base View Classes
+#
 
 class PADSView590(TemplateView):
     """Main View base class for PADS. Contains methods essential to use of 
@@ -583,8 +586,11 @@ class PADSItemDetailView(PADSSummaryView):
     def __init__(self, **kwargs):
         super(**kwargs)
         self.filter_text = None
-        
 
+
+#
+# View Classes
+#
 
 
 #
