@@ -21,10 +21,11 @@ defaults_content = {
         'name_max_length_long' : 255,
         'message_max_length_short' : 280,   # Two Tweets
         # The letter 'O' and number '1' are omitted
-        'ql_password_letters' : 'ABCDEFGHIJKLMNPQRSTUVWXYZ234567890',
-        'ql_password_length' : 8,
-        'ql_password_max_segments' : 3,
+        'ql_new_password_chars' : 'ABCDEFGHIJKLMNPQRSTUVWXYZ234567890',
+        'ql_new_password_length' : 8,
+        'ql_new_password_max_segments' : 3,
         'ql_password_seg_separator' : '-',
+        'ql_user_name_prefix' : 'QuickList',
         'ql_user_name_suffix_length' : 12,
         'password_salt_bytes' : 48,
         'timer_recent_max_age' : 7,
