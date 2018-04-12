@@ -273,11 +273,15 @@ class PADSTimerGroupIndexView(PADSTimerView):
         self.natural_page_number = request.GET.get('p')
         super().__init__(request, dict())
 
-class PADSPaginatedView(TemplateView):
-    """Main View Class for PADS. Contains methods for user session detection,
-    banner display, pagination and version information.
+#
+# 0.59 Base View Classes
+#
+
+class PADSView590(TemplateView):
+    """Main View base class for PADS. Contains methods essential to use of 
+    views in PADS, as well as methods for user session detection and app 
+    metadata such as version information.
     """
-    
     # By default, only the GET method is permitted
     http_method_names = ['get']
 
@@ -292,16 +296,124 @@ class PADSPaginatedView(TemplateView):
         user_id = request.session.get('user_id', 
                                       settings('user_id_signed_out'))
         self.user_id = user_id
-    
+            
     def get_user_id(self):
         """Returns the User Id assigned to the view
         """
         return self.user_id
         
-    def user_present(self):
+    def user_is_present(self):
         """Checks if a user id has been assigned
         """
         return self.current_user_id != settings['user_id_signed_out']
+
+    #
+    # App metadata retrieval methods
+    #
+    def get_app_version(self):
+        return app_metadata['current_version']
+    
+    def get_url_prefix(self, request):
+        # Quick way of generating the first part of the URL (scheme and
+        # host) adapted from answer by Levi Velazquez on Stack Overflow
+        # See: https://stackoverflow.com/a/37740812
+        return '{0}://{1}'.format(
+                self.request.scheme, self.request.get_host())
+
+    #
+    # HTTP request and response methods
+    #
+    def get(self, request, *args, **kwargs):
+        self.request = request
+        self.set_user_id_from_session()
+    
+    # TODO: Implement custom error handler in http_method_not_allowed()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['user_id'] = self.get_user_id()
+        context['signed_in'] = self.user_present()
+        if self.user_present():
+            vuser = self.user_helper.get_user_for_view_by_id(
+                    self.get_user_id())
+            context['user'] = vuser
+            context['time_zone'] = vuser.get_timezone()
+        else:
+            self.add_context_item('time_zone', 
+                         timezone.get_current_timezone_name())
+        
+        context['app_version'] = self.get_app_version()
+        context['banner_text'] = self.banner_text()
+        context['banner_type'] = self.get_banner_type()
+        context["permalink_prefix"] = self.get_permalink_prefix()        
+        return context
+
+    #
+    # Template-specific methods
+    #
+    def get_icon_url(self):
+        """Returns the (relative) URL of the icon appearing with this item
+        summary
+        """
+        raise NotImplementedError        
+        
+    def get_heading(self):
+        """Returns a string containing text to appear as a heading for a view 
+        when it appears in a list
+        """
+        raise NotImplementedError
+    
+    def get_anchor_text(self):
+        raise NotImplementedError
+    
+    def get_anchor_url(self):
+        """Returns the (relative) URL of the anchor text representing this item
+        """
+        raise NotImplementedError
+
+    def get_status_list(self):
+        """Returns the list of status words associated with this particular 
+        item
+        """
+        raise NotImplementedError
+            
+    def __init__(self, **kwargs):
+        super(**kwargs)
+        self.request = None
+        self.user_helper = kwargs.get('user_helper', PADSUserHelper())
+
+
+class PADSItemEditView(PADSView590):
+    """Base class intended to serve as the basis of views that perform edit
+    operations before redirecting to another URL.
+
+    Contrast with PADSSummaryView.
+    """
+    # By default, only the POST method is permitted
+    http_method_names = ['post']
+    
+    def redirect_success(self):
+        """Returns an HTTP redirect response, in response to an operational
+        success
+        """
+        raise NotImplementedError
+    
+    def redirect_failure(self):
+        """Returns an HTTP redirect response, in the event of a failure
+        """
+        raise NotImplementedError
+    
+    def __init__(self, **kwargs):
+        super(**kwargs)
+        
+
+class PADSSummaryView(PADSView590):
+    """Base class intended to serve as the basis of views that display 
+    a list of item summaries with optional links. Contains methods for 
+    information pagination and banner display.
+
+    Contrast with PADSItemEditView.
+    """
 
     # 
     # Banner management methods
@@ -325,13 +437,13 @@ class PADSPaginatedView(TemplateView):
             
     #
     # Pagination and data display methods
-    # These methods are to be implemented by the view object
+    # These methods are to be implemented by the helper object
     #
     def get_page(self, page=0):
-        return self.view_object.get_page(page)
+        return self.summaries.get_page(page)
 
     def get_first_page(self):
-        return self.view_object.page()
+        return self.helper.page()
 
     def get_natural_page(self, page=1):
         # First page is 1, get the first page by default
@@ -343,7 +455,7 @@ class PADSPaginatedView(TemplateView):
         return req_page               
 
     def get_previous_page_url(self):
-        if len(self.view_object.get_url_prefix()) > 0:
+        if len(self.helper.get_url_prefix()) > 0:
             return self.get_page_url(self.get_previous_page_number())
         else:
             return None
@@ -358,13 +470,10 @@ class PADSPaginatedView(TemplateView):
         if self.is_at_first_page():
             return 0
         else:
-            return self.view_object.get_current_natural_page_number() - 1
-    
-    def get_url_prefix(self):
-        return self.view_object.get_url_prefix()
-    
+            return self.helper.get_current_natural_page_number() - 1
+        
     def get_page_url(self, n):
-        return self.view_object.get_page_url()
+        return self.helper.get_page_url()
 
     def get_next_natural_page(self):
         if self.at_last_page():
@@ -390,51 +499,45 @@ class PADSPaginatedView(TemplateView):
     # Status query methods
     #
     def count(self):
-        """Returns the number of items in the view object bound to the view
+        """Returns the number of summaries bound to the view
         """
-        return self.view_object.count()
+        return self.helper.count()
     
     def get_max_page_number(self):
-        return self.view_object.get_max_page_number()
+        """Returns the last page number, counting the first page as the zeroth
+        page
+        """
+        return self.helper.get_max_page_number()
 
     def get_max_natural_page_number(self):
-        return self.view_object.max_page_number() + 1
+        """Returns the last page number, counting the first page as page '1'
+        """
+        return self.helper.max_page_number() + 1
     
     def is_at_last_page(self):
-        return self.current_page == 0
+        return self.current_page == self.helper.get_max_page_number()
     
     def is_at_first_page(self):
-        return self.current_page == self.view_object.get_max_page_number()
+        return self.current_page == 0
 
     def is_multi_page(self):
-        return self.view_object.is_multi_page()
+        """Returns True if the view has more than one page of summaries
+        """
+        return self.helper.is_multi_page()
     
     def has_small_last_page(self):
         """Determines if the last page will contain less than a third of the 
-        page size's number of items.
+        page size's number of items
         """
-        return (self.count() % self.page_size) <= int(self.page_size / 3)
-    
-    #
-    # App metadata retrieval methods
-    #
-    def get_app_version(self):
-        return app_metadata['current_version']
-    
-    def get_permalink_prefix(self, request):
-        # Quick way of generating the first part of the URL (scheme and
-        # host) adapted from answer by Levi Velazquez on Stack Overflow
-        # See: https://stackoverflow.com/a/37740812
-        return '{0}://{1}'.format(
-                self.request.scheme, self.request.get_host())
+        return (self.count() % self.items_per_page) <= int(
+                self.items_per_page / 3)
 
     #
     # HTTP request and response methods
     #
     def get(self, request, *args, **kwargs):
-        self.set_user_id_from_session()
-    
-    # TODO: Implement custom error handler in http_method_not_allowed()
+        super(request, *args, **kwargs)
+        self.current_page = request.GET.get('p', 0)
     
     #
     # View Object Context Management stuff and Local Variables
@@ -449,34 +552,46 @@ class PADSPaginatedView(TemplateView):
             context['user'] = vuser
             context['time_zone'] = vuser.get_timezone()
         else:
-            self.add_context_item('time_zone', 
-                         timezone.get_current_timezone_name())
+            context['time_zone'] = timezone.get_current_timezone_name()
         
         context['app_version'] = self.get_app_version()
         context['banner_text'] = self.banner_text()
         context['banner_type'] = self.get_banner_type()
-        context["permalink_prefix"] = self.get_permalink_prefix()
+        context['permalink_prefix'] = self.get_permalink_prefix()
         
         return context
 
     def __init__(self, **kwargs):
-        """View superclass from which other PADS View Classes are derived.
-        At a minimum, PADSPaginatedView requires the following for proper 
-        operation:
-            
-            1. A PADSUserHelper object, for getting user information.
-            2. A view object that contains information to show to the User,
-               controllable using the Pagination Methods defined in this 
-               class.
+        """View base class from which other PADS View Classes intended for 
+        information display are derived.
         """
         self.banner_text = None
         self.banner_type = None
         self.current_page = 0
         self.current_user_id = settings['user_id_signed_out']
         self.items_per_page = settings['view_items_per_page']
-        self.request = None
-        self.user_helper = kwargs.get('user_helper', PADSUserHelper())
-        self.view_object = kwargs.get('view_object')
+        self.helper = kwargs.get('helper')
+
+
+class PADSItemDetailView(PADSSummaryView):
+    """View base class for all most other Item Detail Views. Contains methods
+    for passing search parameters.
+    """
+    def set_filter_text(self, text):
+        self.filter_text = text
+        
+    def set_filter_text_none(self, text):
+        self.filter_text = None
+        
+    def __init__(self, **kwargs):
+        super(**kwargs)
+        self.filter_text = None
+
+
+#
+# View Classes
+#
+
 
 #
 # View Functions

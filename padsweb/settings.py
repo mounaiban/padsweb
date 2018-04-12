@@ -11,13 +11,28 @@ from padsweb.strings import PADSStringDictionary
 # Hard-coded configuration in dictionary
 #
 app_metadata = {
+        # Please do not alter app metadata during normal operation
         'copyright_message_html' : '&copy; 2018 Mounaiban',
-        'current_version' : '0.590',
+        'current_version' : '0.588-pre590',
         }
 
 defaults_content = {
-        'view_items_per_page' : 6,
+        'name_max_length_short' : 24,
+        'name_max_length_long' : 255,
+        'message_max_length_short' : 280,   # Two Tweets
+        # The letter 'O' and number '1' are omitted
+        'ql_new_password_chars' : 'ABCDEFGHIJKLMNPQRSTUVWXYZ234567890',
+        'ql_new_password_length' : 8,
+        'ql_new_password_max_segments' : 3,
+        'ql_password_seg_separator' : '-',
+        'ql_user_name_prefix' : 'QuickList',
+        'ql_user_name_suffix_length' : 12,
+        'password_salt_bytes' : 48,
+        'timer_recent_max_age' : 7,
+        'timer_description_length_short' : 140, # One Tweet
+        'timer_permalink_code_length' : 10,
         'user_id_signed_out' : -1, # User id when no User has signed in
+        'view_items_per_page' : 6,
         }
 defaults = PADSStringDictionary(defaults_content,
                                 "PADS Hard-coded Default Settings")
@@ -28,7 +43,7 @@ defaults = PADSStringDictionary(defaults_content,
 #
 
 # App Metadata
-PADS_CURRENT_VERSION = '0.587'
+PADS_CURRENT_VERSION = '0.588'
 
 # App Miscellaneous Settings
 MAX_NAME_LENGTH_SHORT = 24
