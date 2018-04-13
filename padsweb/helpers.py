@@ -48,10 +48,10 @@ class PADSHelper:
 
 class PADSReadHelper(PADSHelper):
     """Base class for helper classes that load data"""
-    def get_page(self, page=0):
+    def get_all_from_db(self):
         raise NotImplementedError
         
-    def get_by_id(self, item_id):
+    def get_from_db(self, item_id):
         raise NotImplementedError
         
     def __init__(self, user_id, **kwargs):
@@ -74,19 +74,31 @@ class PADSWriteHelper(PADSHelper):
 
 class PADSReadTimerHelper(PADSReadHelper):
     """The PADSTimerHelper is a Helper class to load Timer data"""
-    
-    def get_timers_from_db(self):
+    def get_from_db(self):
         raise NotImplementedError
-            
-    def get_timer_resets_from_db_by_timer_id(self):
+    
+    def get_all_from_db(self):
         raise NotImplementedError
 
-    def get_timer_resets_from_db_by_user(self):
-        raise NotImplementedError
-    
-    def get_timer_from_db_by_permalink_code(self, link_code):
+    def get_from_db_by_permalink_code(self, link_code):
         """Returns a PADSViewTimer of a single Timer by its id."""
         raise NotImplementedError
+    
+    def get_by_group_id(self):
+        raise NotImplementedError
+
+    def get_groups_all(self):
+        raise NotImplementedError
+
+    def get_groups_by_timer_id(self):
+        raise NotImplementedError
+
+    def get_resets_from_db(self):
+        raise NotImplementedError
+
+    def get_resets_from_db_by_user(self):
+        raise NotImplementedError
+    
     
     #
     # Introspection and Constructor Methods
@@ -95,14 +107,51 @@ class PADSReadTimerHelper(PADSReadHelper):
         super(user_id, **kwargs)
 
         # Set Models
-        self.class_desc = "PADS Timer Helper"
+        self.class_desc = "PADS Read Timer Helper"
         self.timer_model = self.models.get('timer_model', PADSTimer())
         self.group_model = self.models.get('group_model', PADSTimerGroup())
         self.group_incl_model = self.models.get(
                 'group_incl_model', GroupInclusion())
         self.timer_log_model = self.models.get('timer_log_model', 
                                                PADSTimerReset())
+
+class PADSWriteTimerHelper(PADSWriteHelper):
+    def new(self, description, **kwargs):
+        raise NotImplementedError
+    
+    def new_group(self, name):
+        raise NotImplementedError
         
+    def new_log_entry(self, timer_id, description):
+        raise NotImplementedError
+
+    def delete(self, timer_id):
+        raise NotImplementedError
+    
+    def set_description(self, description):
+        raise NotImplementedError
+    
+    def reset_by_id(self, timer_id):
+        raise NotImplementedError
+        
+    def stop_by_id(self, timer_id):
+        raise NotImplementedError
+
+    #
+    # Introspection and Constructor Methods
+    #
+    def __init__(self, user_id=None, **kwargs):
+        super(user_id, **kwargs)
+
+        # Set Models
+        self.class_desc = "PADS Write Timer Helper"
+        self.timer_model = self.models.get('timer_model', PADSTimer)
+        self.group_model = self.models.get('group_model', PADSTimerGroup)
+        self.group_incl_model = self.models.get(
+                'group_incl_model', GroupInclusion)
+        self.timer_log_model = self.models.get('timer_log_model', 
+                                               PADSTimerReset)
+
         
 class PADSUserHelper(PADSHelper):
     """Helper class for looking up information on User accounts and password
