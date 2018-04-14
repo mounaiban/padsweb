@@ -20,19 +20,42 @@ settings = defaults
 class PADSHelper:
     """Base class for other PADS helper classes"""
     def set_user_id(self, user_id):
+        """Assigns a Helper to a User id. This is intended to assist access 
+        control routines. Only valid User ids may be assigned. If the User is 
+        not found in the database, the default User id (user_id_signed_out) 
+        is set.
+        """
         if isinstance(user_id, int) & (user_id > 0):
             self.user_id = user_id
+            if self.user_is_registered() is False:                
+                self.user_id = settings['user_id_signed_out']
         else:
             self.user_id = settings['user_id_signed_out']
 
+    def set_user_model(self, user_model=PADSUser):
+        if user_model is not None:
+            self.user_model = user_model
+
     def user_is_present(self):
         return self.user_id != settings['user_id_signed_out']
+
+    def user_is_registered(self):
+        if self.user_model is None:
+            return False
+        elif self.user_model.objects.filter(pk=self.user_id).exists():
+            return True
+        else:
+            return False
     
     def __init__(self, user_id=settings['user_id_signed_out'], **kwargs):
+        # Local Variables
         # TODO: Explain how models are specified to the Timer Helper
         self.class_desc = 'PADS Helper Base Class'
         self.models = kwargs.get('models', dict())
-        self.set_user_id(user_id)
+        self.user_model = None
+        # Constructor Routine
+        self.set_user_id(user_id)        
+        self.set_user_model()
 
     def __repr__(self):
         return self.__str__()
@@ -177,18 +200,7 @@ class PADSUserHelper(PADSHelper):
                 return None
         else:
             return None
-    
-    def set_user_id(self, user_id):
-        super().set_user_id(user_id)
-        if self.user_is_registered():
-            self.user_id = user_id
-        else:
-            self.user_id = settings['user_id_signed_out']
-    
-    def set_user_model(self, user_model=PADSUser):
-        if self.user_model is None:
-            self.user_model = user_model
-    
+        
     def set_user_id_by_username(self, user_name):
         user = self.get_user_from_db_by_username(user_name)
         if user is not None:
@@ -241,12 +253,6 @@ class PADSUserHelper(PADSHelper):
         return self.user_from_db.nickname_short.startswith(
                 settings['ql_user_name_prefix'])
 
-    def user_is_registered(self):
-        if self.user_model.objects.filter(pk=self.user_id).exists():
-            return True
-        else:
-            return False
-    
     def user_has_signed_in(self):
         user = self.get_user_from_db()
         if user is not None:
@@ -258,9 +264,6 @@ class PADSUserHelper(PADSHelper):
         self.class_desc = 'PADS User Helper (for read operations)'
         self.password_hasher = kwargs.get('password_hasher', 
                                           PBKDF2PasswordHasher())
-        self.user_model = None
-        self.user_id = settings['user_id_signed_out']
-        self.set_user_model()  # This must be done before calling super()
         super().__init__(user_id, **kwargs)
         self.set_user_id(user_id)
     
