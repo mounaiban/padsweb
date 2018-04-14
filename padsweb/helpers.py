@@ -37,6 +37,9 @@ class PADSHelper:
             self.user_model = user_model
 
     def user_is_present(self):
+        """Indicates if a User id has been assigned to the helper. Returns
+        True or False.
+        """
         return self.user_id != settings['user_id_signed_out']
 
     def user_is_registered(self):
@@ -50,6 +53,7 @@ class PADSHelper:
     def __init__(self, user_id=settings['user_id_signed_out'], **kwargs):
         # Local Variables
         # TODO: Explain how models are specified to the Timer Helper
+        self.user_id = settings['user_id_signed_out']
         self.class_desc = 'PADS Helper Base Class'
         self.models = kwargs.get('models', dict())
         self.user_model = None
@@ -143,9 +147,30 @@ class PADSWriteTimerHelper(PADSWriteHelper):
         raise NotImplementedError
     
     def new_group(self, name):
+        """Creates a new Timer Group and saves it to the database. 
+        Returns the new Timer Group's id as an int on success. Returns None
+        on failure
+        """
+        if self.user_is_registered() is False:
+            return False
+        else:
+            group_exists = self.group_model.objects.filter(name=name).exists()
+            if group_exists is True:
+                return False
+            else:
+                new_group = PADSTimerGroup()
+                new_group.name = name
+                new_group.creator_user_id = self.user_id
+                new_group.save()
+                return new_group.id
+        
+    def new_log_entry(self, timer_id, description, **kwargs):
         raise NotImplementedError
         
-    def new_log_entry(self, timer_id, description):
+    def add_to_group(self, timer_id, group_id):
+        raise NotImplementedError
+
+    def remove_from_group(self, timer_id, group_id):
         raise NotImplementedError
 
     def delete(self, timer_id):
