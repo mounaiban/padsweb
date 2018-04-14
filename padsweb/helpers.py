@@ -502,12 +502,6 @@ class PADSWriteUserHelper(PADSWriteHelper):
         
         output = (new_user, raw_password)
         return output
-
-    def user_is_registered(self):
-        if self.user_model.objects.filter(pk=self.user_id).exists():
-            return True
-        else:
-            return False
     
     #
     # Constructor
