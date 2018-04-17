@@ -8,6 +8,7 @@ from django.contrib.auth.hashers import PBKDF2PasswordHasher
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from padsweb.settings import defaults
+from padsweb.strings import labels
 from padsweb.misc import split_posint_rand
 from padsweb.models import PADSUser
 from padsweb.models import PADSTimer, PADSTimerReset
@@ -15,7 +16,6 @@ from padsweb.models import PADSTimerGroup, GroupInclusion
 import datetime, secrets
 
 settings = defaults
-
 
 class PADSHelper:
     """Base class for other PADS helper classes"""
@@ -101,30 +101,51 @@ class PADSWriteHelper(PADSHelper):
 
 class PADSReadTimerHelper(PADSReadHelper):
     """The PADSTimerHelper is a Helper class to load Timer data"""
-    def get_from_db(self):
-        raise NotImplementedError
-    
     def get_all_from_db(self):
-        raise NotImplementedError
+        if self.user_is_present() is True:
+            timers_own = self.timer_model.objects.filter(
+                    creator_user_id=self.user_id)
+            timers_others_shared = self.timer_model.objects.filter(
+                    public=True)
+            timers_available = timers_own.union(timers_others_shared)
+            return timers_available
+        else:
+            return self.timer_model.objects.filter(public=True)
 
-    def get_from_db_by_permalink_code(self, link_code):
-        """Returns a PADSViewTimer of a single Timer by its id."""
-        raise NotImplementedError
+    def get_from_db(self, timer_id):
+        return self.get_all_from_db().get(pk=timer_id)
     
-    def get_by_group_id(self):
-        raise NotImplementedError
+    def get_from_db_by_description(self, description):
+        return self.get_all_from_db().filter(
+                description__icontains=description)
+    
+    def get_from_db_by_permalink_code(self, link_code):
+        return self.get_all_from_db().get(permalink_code=link_code)
+    
+    def get_by_group_id(self, group_id):
+        return self.get_all_from_db().filter(in_groups=group_id)
 
     def get_groups_all(self):
-        raise NotImplementedError
+        if self.user_is_present() is True:
+            groups_own = self.group_model.objects.filter(
+                    creator_user_id=self.user_id)
+            return groups_own
+        else:
+            return None
 
-    def get_groups_by_timer_id(self):
-        raise NotImplementedError
+    def get_groups_from_db_by_name(self, name):
+        return self.get_groups_all().filter(name__icontains=name)
 
-    def get_resets_from_db(self):
-        raise NotImplementedError
+    def get_groups_by_timer_id(self, timer_id):
+        timer = self.get_all_from_db().get(pk=timer_id)
+        groups = timer.in_groups.all()
+        return groups
 
-    def get_resets_from_db_by_user(self):
-        raise NotImplementedError
+    def get_resets_from_db_by_timer_id(self, timer_id):
+        return self.timer_log_model.objects.filter(timer_id=timer_id)
+
+    def get_resets_from_db_by_user(self, user_id):
+        return self.timer_log_model.object.filter(user_id)
     
     
     #
@@ -144,19 +165,35 @@ class PADSReadTimerHelper(PADSReadHelper):
 
 class PADSWriteTimerHelper(PADSWriteHelper):
     def new(self, description, **kwargs):
-        raise NotImplementedError
+        if self.user_is_registered() is False:
+            return False
+        else:
+            creation_time = timezone.now()
+            new_timer = PADSTimer()
+            new_timer.creator_user_id = self.user_id
+            new_timer.description = description
+            new_timer.count_from_date_time = kwargs.get(
+                    'count_from_date_time', creation_time)
+            new_timer.creation_date_time = creation_time
+            new_timer.historical = kwargs.get('historical', False)
+            new_timer.permalink_code = secrets.token_urlsafe(
+                    settings['timer_permalink_code_length'])
+            new_timer.public = kwargs.get('public', False)
+            new_timer.running = kwargs.get('running', True)
+            new_timer.save()
+            return new_timer.id
     
     def new_group(self, name):
         """Creates a new Timer Group and saves it to the database. 
         Returns the new Timer Group's id as an int on success. Returns None
-        on failure
+        on failure, or the id of the new Timer Group on success.
         """
         if self.user_is_registered() is False:
-            return False
+            return None
         else:
             group_exists = self.group_model.objects.filter(name=name).exists()
             if group_exists is True:
-                return False
+                return None
             else:
                 new_group = PADSTimerGroup()
                 new_group.name = name
@@ -165,25 +202,145 @@ class PADSWriteTimerHelper(PADSWriteHelper):
                 return new_group.id
         
     def new_log_entry(self, timer_id, description, **kwargs):
-        raise NotImplementedError
+        """Creates a Log Entry for a Timer. Log entries are currently used
+        only for edits to Timers that trigger a reset, and are thus may be 
+        called Timer resets. Returns None on failure, or the id of the Timer
+        Log Entry on success.
+        """
+        if self.user_is_registered() is False:
+            return None
+        else:
+            timer_exists = self.timer_model.objects.filter(
+                    pk=timer_id).exists()
+            if timer_exists is True:
+                log_time = timezone.now()
+                new_log_entry = PADSTimerReset()
+                new_log_entry.timer_id = timer_id
+                new_log_entry.date_time = log_time
+                new_log_entry.save()
+                return new_log_entry.id
+            else:
+                return None
         
     def add_to_group(self, timer_id, group_id):
-        raise NotImplementedError
-
+        if self.user_is_registered() is False:
+            return None
+        else:
+            timer_exists = self.timer_model.objects.filter(
+                    pk=timer_id).exists()
+            group_exists = self.group_model.objects.filter(
+                    pk=group_id).exists()
+            if (timer_exists is True) & (group_exists is True):
+                group_inclusion = GroupInclusion()
+                group_inclusion.group_id = group_id
+                group_inclusion.timer_id = timer_id
+            else:
+                return None
+                
     def remove_from_group(self, timer_id, group_id):
-        raise NotImplementedError
+        if self.user_is_registered() is False:
+            return False
+        else:
+            timer_exists = self.timer_model.objects.filter(
+                    pk=timer_id).exists()
+            group_exists = self.group_model.objects.filter(
+                    pk=group_id).exists()
+            if (timer_exists is True) & (group_exists is True):
+                group_inclusion = self.group_incl_model.objects.get(
+                        timer_id=timer_id, group_id=group_id)
+                group_inclusion.delete()
+                return True
+            else:
+                return False
 
     def delete(self, timer_id):
-        raise NotImplementedError
+        if self.user_is_registered() is False:
+            return False
+        else:
+            timer_exists = self.timer_model.objects.filter(
+                    pk=timer_id).exists()
+            if timer_exists is True:
+                timer = self.timer_model.objects.get(pk=timer_id)
+                timer.delete()
+                return True
+            else:
+                return False
     
-    def set_description(self, description):
-        raise NotImplementedError
+    def set_description(self, timer_id, description):
+        edit_time = timezone.now()
+        if self.user_is_registered() is False:
+            return False
+        else:
+            with transaction.atomic():
+                timer_exists = self.timer_model.objects.filter(
+                        pk=timer_id).exists()
+                if timer_exists is True:
+                    timer = self.timer_model.objects.get(pk=timer_id)
+                    timer.description = description
+                    timer.count_from_date_time = edit_time  # Reset timer
+                    # Log the change in description
+                    notice = labels['TIMER_RENAME_NOTICE'].format(
+                            description)
+                    self.new_log_entry(timer_id, notice)
+                    timer.save()
+                    return True
+                else:
+                    return False
     
-    def reset_by_id(self, timer_id):
-        raise NotImplementedError
+    def reset_by_id(self, timer_id, reason):
+        reset_time = timezone.now()
+        if self.user_is_registered() is False:
+            return False        
+        else:
+            timer_exists = self.timer_model.objects.filter(
+                    pk=timer_id).exists()
+
+            if timer_exists is False:
+                return False
+            else:
+                timer = self.timer_model.objects.get(pk=timer_id)
+                timer_historical = timer.historical
+            
+            if timer_historical is False:
+                with transaction.atomic():
+                        timer.count_from_date_time = reset_time
+                        timer.running = True
+                        # Log the reset
+                        notice = labels['TIMER_RESET_NOTICE'].format(
+                                reason)
+                        self.new_log_entry(timer_id, notice)
+                        timer.save()
+                        return True
+            else:
+                # Historical Timers shall not be reset 
+                return False
         
-    def stop_by_id(self, timer_id):
-        raise NotImplementedError
+    def stop_by_id(self, timer_id, reason):
+        if self.user_is_registered() is False:
+            return False        
+        else:
+            timer_exists = self.timer_model.objects.filter(
+                    pk=timer_id).exists()
+
+        if timer_exists is False:
+            return False
+        else:
+            timer = self.timer_model.objects.get(pk=timer_id)
+            timer_historical = timer.historical
+            timer.running = False
+        
+            with transaction.atomic():
+                # Log the edit
+                if timer_historical is False:
+                    notice = labels['TIMER_SUSPEND_NOTICE'].format(
+                            reason)
+                else:
+                    notice = labels['TIMER_STOP_NOTICE'].format(
+                            reason)
+                self.new_log_entry(timer_id, notice)
+                timer.save()
+            
+            return True
 
     #
     # Introspection and Constructor Methods
