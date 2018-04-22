@@ -222,7 +222,7 @@ class PADSWriteUserHelperNewTests(TestCase):
         ql_user_id = self.read_user_helper.split_ql_password(ql_password)[0]
         # Assertions
         ql_user_test = PADSUser.objects.get(pk=ql_user_id)
-        self.assertEquals(str(ql_user_test.id), ql_user_id,
+        self.assertEquals(ql_user_test.id, ql_user_id,
           'Quick List user must be in database with correct id after creation')
     
     def test_new_blank_usernames(self):
