@@ -390,7 +390,8 @@ class PADSWriteUserHelperSetTimezoneTests(TestCase):
         result = write_user_helper_stz.set_time_zone(tz_name)
         ql_user = PADSUser.objects.get(pk=self.ql_user_id) # Reload User
         # Assertion
-        self.assertTrue(result)
+        self.assertTrue(result,
+                        'Helper must indicate success in timezone change')
         self.assertEquals(ql_user.time_zone, tz_name, 
                           'User must be able to switch to a valid timezone')
     
@@ -401,7 +402,8 @@ class PADSWriteUserHelperSetTimezoneTests(TestCase):
         result = write_user_helper_stz.set_time_zone(tz_name)
         # Assertions
         ql_user = PADSUser.objects.get(pk=self.ql_user_id) # Reload User
-        self.assertFalse(result)
+        self.assertFalse(result,
+                         'Helper must indicate failure to change timezone')
         self.assertNotEquals(ql_user.time_zone, tz_name, 
                           'User must fail to switch to an invalid timezone')
         self.assertEquals(ql_user.time_zone, tz_name_orig,
@@ -414,7 +416,8 @@ class PADSWriteUserHelperSetTimezoneTests(TestCase):
         for i in blank_inputs:
             result = write_user_helper_stz.set_time_zone(i)
             user = PADSUser.objects.get(pk=self.ql_user_id) # Reload User
-            self.assertFalse(result)
+            self.assertFalse(result, 
+                             'Helper must indicate failure to change timezone')
             self.assertNotEquals(user.time_zone, i, 
                           'User must fail to switch to an invalid timezone')
             self.assertEquals(user.time_zone, tz_name_orig,
