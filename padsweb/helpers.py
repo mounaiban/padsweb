@@ -6,8 +6,11 @@
 #
 from django.contrib.auth.hashers import PBKDF2PasswordHasher
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
+from pytz import all_timezones
 from padsweb.settings import defaults
+from padsweb.strings import labels
 from padsweb.misc import split_posint_rand
 from padsweb.models import PADSUser
 from padsweb.models import PADSTimer, PADSTimerReset
@@ -16,23 +19,52 @@ import datetime, secrets
 
 settings = defaults
 
-
 class PADSHelper:
     """Base class for other PADS helper classes"""
     def set_user_id(self, user_id):
-        if isinstance(user_id, int) & (user_id > 0):
-            self.user_id = user_id
+        """Assigns a Helper to a User id. This is intended to assist access 
+        control routines. Only valid User ids may be assigned. If the User is 
+        not found in the database, the default User id (user_id_signed_out) 
+        is set.
+        """
+        if isinstance(user_id, int):
+            if user_id > 0:
+                self.user_id = user_id
+                if self.user_is_registered() is False:
+                    self.user_id = settings['user_id_signed_out']
+            else:
+                self.user_id = settings['user_id_signed_out']
         else:
             self.user_id = settings['user_id_signed_out']
 
+    def set_user_model(self, user_model=PADSUser):
+        if user_model is not None:
+            self.user_model = user_model
+
     def user_is_present(self):
+        """Indicates if a User id has been assigned to the helper. Returns
+        True or False.
+        """
         return self.user_id != settings['user_id_signed_out']
+
+    def user_is_registered(self):
+        if self.user_model is None:
+            return False
+        elif self.user_model.objects.filter(pk=self.user_id).exists():
+            return True
+        else:
+            return False
     
     def __init__(self, user_id=settings['user_id_signed_out'], **kwargs):
+        # Local Variables
         # TODO: Explain how models are specified to the Timer Helper
+        self.user_id = settings['user_id_signed_out']
         self.class_desc = 'PADS Helper Base Class'
         self.models = kwargs.get('models', dict())
-        self.set_user_id(user_id)
+        self.user_model = None
+        # Constructor Routine
+        self.set_user_model()
+        self.set_user_id(user_id)        
 
     def __repr__(self):
         return self.__str__()
@@ -48,14 +80,14 @@ class PADSHelper:
 
 class PADSReadHelper(PADSHelper):
     """Base class for helper classes that load data"""
-    def get_page(self, page=0):
+    def get_all_from_db(self):
         raise NotImplementedError
         
-    def get_by_id(self, item_id):
+    def get_from_db(self, item_id):
         raise NotImplementedError
         
     def __init__(self, user_id, **kwargs):
-        super(user_id, **kwargs)
+        super().__init__(user_id, **kwargs)
 
     
 class PADSWriteHelper(PADSHelper):
@@ -74,35 +106,279 @@ class PADSWriteHelper(PADSHelper):
 
 class PADSReadTimerHelper(PADSReadHelper):
     """The PADSTimerHelper is a Helper class to load Timer data"""
-    
-    def get_timers_from_db(self):
-        raise NotImplementedError
+    def get_all_from_db(self):
+        if self.user_is_present() is True:
             
-    def get_timer_resets_from_db_by_timer_id(self):
-        raise NotImplementedError
+            # TODO: Find out why doing the following results in 
+            # the get() method failing on timers_available when a getting a 
+            # timer that appears in both timers_own and timers_others_shared.
+            # 
+            #timers_own = self.timer_model.objects.filter(
+            #        creator_user_id=self.user_id)
+            #timers_others_shared = self.timer_model.objects.exclude(
+            #        creator_user_id=self.user_id)
+            #timers_available = timers_own.union(timers_others_shared)
+            
+            timers_available_q = self.timer_model.objects.filter(
+                    Q(creator_user_id=self.user_id) | Q(public=True) )
+            return timers_available_q
+        else:
+            return self.timer_model.objects.filter(public=True)
 
-    def get_timer_resets_from_db_by_user(self):
-        raise NotImplementedError
+    def get_from_db(self, timer_id):
+        if self.get_all_from_db().filter(pk=timer_id).exists() is True:
+            return self.get_all_from_db().get(pk=timer_id)
+        else:
+            return None
     
-    def get_timer_from_db_by_permalink_code(self, link_code):
-        """Returns a PADSViewTimer of a single Timer by its id."""
-        raise NotImplementedError
+    def get_from_db_by_description(self, description):
+        return self.get_all_from_db().filter(
+                description__icontains=description)
+    
+    def get_from_db_by_permalink_code(self, link_code):
+        if isinstance(link_code, str) is False:
+            return None
+        if self.get_all_from_db().filter(
+                permalink_code=link_code).exists() is True:
+            return self.get_all_from_db().get(permalink_code=link_code)
+        else:
+            return None
+    
+    def get_by_group_id(self, group_id):
+        return self.get_all_from_db().filter(in_groups=group_id)
+
+    def get_groups_all(self):
+        if self.user_is_present() is True:
+            groups_own = self.group_model.objects.filter(
+                    creator_user_id=self.user_id)
+            return groups_own
+        else:
+            return None
+
+    def get_groups_from_db_by_name(self, name):
+        return self.get_groups_all().filter(name__icontains=name)
+
+    def get_groups_by_timer_id(self, timer_id):
+        timer = self.get_all_from_db().get(pk=timer_id, 
+                                    creator_user_id=self.user_id)
+        groups = timer.in_groups.all()
+        return groups
+
+    def get_resets_from_db_by_timer_id(self, timer_id):
+        return self.timer_log_model.objects.filter(timer_id=timer_id)    
     
     #
     # Introspection and Constructor Methods
     #
     def __init__(self, user_id=None, **kwargs):
-        super(user_id, **kwargs)
+        super().__init__(user_id, **kwargs)
 
         # Set Models
-        self.class_desc = "PADS Timer Helper"
-        self.timer_model = self.models.get('timer_model', PADSTimer())
-        self.group_model = self.models.get('group_model', PADSTimerGroup())
+        self.class_desc = "PADS Read Timer Helper"
+        # Beginner's PROTIP: Use Django database model classes directly to 
+        # access an entire SQL table, create instances of the model classes to 
+        # access individual records in the table.
+        self.timer_model = self.models.get('timer_model', PADSTimer)
+        self.group_model = self.models.get('group_model', PADSTimerGroup)
         self.group_incl_model = self.models.get(
-                'group_incl_model', GroupInclusion())
+                'group_incl_model', GroupInclusion)
         self.timer_log_model = self.models.get('timer_log_model', 
-                                               PADSTimerReset())
+                                               PADSTimerReset)
+
+class PADSWriteTimerHelper(PADSWriteHelper):
+    def new(self, description, **kwargs):
+        if self.user_is_registered() is False:
+            return None
+        else:
+            creation_time = timezone.now()
+            new_timer = PADSTimer()
+            new_timer.creator_user_id = self.user_id
+            new_timer.description = description
+            new_timer.count_from_date_time = kwargs.get(
+                    'count_from_date_time', creation_time)
+            new_timer.creation_date_time = creation_time
+            new_timer.historical = kwargs.get('historical', False)
+            new_timer.permalink_code = secrets.token_urlsafe(
+                    settings['timer_permalink_code_length'])
+            new_timer.public = kwargs.get('public', False)
+            new_timer.running = kwargs.get('running', True)
+            new_timer.save()
+            return new_timer.id
+    
+    def new_group(self, name):
+        """Creates a new Timer Group and saves it to the database. 
+        Returns the new Timer Group's id as an int on success. Returns None
+        on failure, or the id of the new Timer Group on success.
+        """
+        if self.user_is_registered() is False:
+            return None
+        else:
+            group_exists = self.group_model.objects.filter(name=name).exists()
+            if group_exists is True:
+                return None
+            else:
+                new_group = PADSTimerGroup()
+                new_group.name = name
+                new_group.creator_user_id = self.user_id
+                new_group.save()
+                return new_group.id
         
+    def new_log_entry(self, timer_id, description, **kwargs):
+        """Creates a Log Entry for a Timer. Log entries are currently used
+        only for edits to Timers that trigger a reset, and are thus may be 
+        called Timer resets. Returns None on failure, or the id of the Timer
+        Log Entry on success.
+        """
+        if self.user_is_registered() is False:
+            return None
+        else:
+            timer_exists = self.timer_model.objects.filter(
+                    pk=timer_id).exists()
+            if timer_exists is True:
+                log_time = timezone.now()
+                new_log_entry = PADSTimerReset()
+                new_log_entry.timer_id = timer_id
+                new_log_entry.date_time = log_time
+                new_log_entry.save()
+                return new_log_entry.id
+            else:
+                return None
+        
+    def add_to_group(self, timer_id, group_id):
+        if self.user_is_registered() is False:
+            return None
+        else:
+            timer_exists = self.timer_model.objects.filter(
+                    pk=timer_id).exists()
+            group_exists = self.group_model.objects.filter(
+                    pk=group_id).exists()
+            if (timer_exists is True) & (group_exists is True):
+                group_inclusion = GroupInclusion()
+                group_inclusion.group_id = group_id
+                group_inclusion.timer_id = timer_id
+            else:
+                return None
+                
+    def remove_from_group(self, timer_id, group_id):
+        if self.user_is_registered() is False:
+            return False
+        else:
+            timer_exists = self.timer_model.objects.filter(
+                    pk=timer_id).exists()
+            group_exists = self.group_model.objects.filter(
+                    pk=group_id).exists()
+            if (timer_exists is True) & (group_exists is True):
+                group_inclusion = self.group_incl_model.objects.get(
+                        timer_id=timer_id, group_id=group_id)
+                group_inclusion.delete()
+                return True
+            else:
+                return False
+
+    def delete(self, timer_id):
+        if self.user_is_registered() is False:
+            return False
+        else:
+            timer_exists = self.timer_model.objects.filter(
+                    pk=timer_id).exists()
+            if timer_exists is True:
+                timer = self.timer_model.objects.get(pk=timer_id)
+                timer.delete()
+                return True
+            else:
+                return False
+    
+    def set_description(self, timer_id, description):
+        edit_time = timezone.now()
+        if self.user_is_registered() is False:
+            return False
+        else:
+            with transaction.atomic():
+                timer_exists = self.timer_model.objects.filter(
+                        pk=timer_id).exists()
+                if timer_exists is True:
+                    timer = self.timer_model.objects.get(pk=timer_id)
+                    timer.description = description
+                    timer.count_from_date_time = edit_time  # Reset timer
+                    # Log the change in description
+                    notice = labels['TIMER_RENAME_NOTICE'].format(
+                            description)
+                    self.new_log_entry(timer_id, notice)
+                    timer.save()
+                    return True
+                else:
+                    return False
+    
+    def reset_by_id(self, timer_id, reason):
+        reset_time = timezone.now()
+        if self.user_is_registered() is False:
+            return False        
+        else:
+            timer_exists = self.timer_model.objects.filter(
+                    pk=timer_id).exists()
+
+            if timer_exists is False:
+                return False
+            else:
+                timer = self.timer_model.objects.get(pk=timer_id)
+                timer_historical = timer.historical
+            
+            if timer_historical is False:
+                with transaction.atomic():
+                        timer.count_from_date_time = reset_time
+                        timer.running = True
+                        # Log the reset
+                        notice = labels['TIMER_RESET_NOTICE'].format(
+                                reason)
+                        self.new_log_entry(timer_id, notice)
+                        timer.save()
+                        return True
+            else:
+                # Historical Timers shall not be reset 
+                return False
+        
+    def stop_by_id(self, timer_id, reason):
+        if self.user_is_registered() is False:
+            return False        
+        else:
+            timer_exists = self.timer_model.objects.filter(
+                    pk=timer_id).exists()
+
+        if timer_exists is False:
+            return False
+        else:
+            timer = self.timer_model.objects.get(pk=timer_id)
+            timer_historical = timer.historical
+            timer.running = False
+        
+            with transaction.atomic():
+                # Log the edit
+                if timer_historical is False:
+                    notice = labels['TIMER_SUSPEND_NOTICE'].format(
+                            reason)
+                else:
+                    notice = labels['TIMER_STOP_NOTICE'].format(
+                            reason)
+                self.new_log_entry(timer_id, notice)
+                timer.save()
+            
+            return True
+
+    #
+    # Introspection and Constructor Methods
+    #
+    def __init__(self, user_id=None, **kwargs):
+        super().__init__(user_id, **kwargs)
+
+        # Set Models
+        self.class_desc = "PADS Write Timer Helper"
+        self.timer_model = self.models.get('timer_model', PADSTimer)
+        self.group_model = self.models.get('group_model', PADSTimerGroup)
+        self.group_incl_model = self.models.get(
+                'group_incl_model', GroupInclusion)
+        self.timer_log_model = self.models.get('timer_log_model', 
+                                               PADSTimerReset)
+
         
 class PADSUserHelper(PADSHelper):
     """Helper class for looking up information on User accounts and password
@@ -128,18 +404,7 @@ class PADSUserHelper(PADSHelper):
                 return None
         else:
             return None
-    
-    def set_user_id(self, user_id):
-        super().set_user_id(user_id)
-        if self.user_is_registered():
-            self.user_id = user_id
-        else:
-            self.user_id = settings['user_id_signed_out']
-    
-    def set_user_model(self, user_model=PADSUser):
-        if self.user_model is None:
-            self.user_model = user_model
-    
+        
     def set_user_id_by_username(self, user_name):
         user = self.get_user_from_db_by_username(user_name)
         if user is not None:
@@ -175,8 +440,12 @@ class PADSUserHelper(PADSHelper):
                 settings['ql_password_seg_separator'])
             
         # The quick list ID is the number in the first segment 
-        #  of the Quick List password. 
-        user_id = password_parts[0]
+        #  of the Quick List password.
+        try:
+            user_id = int(password_parts[0])  # Remember to parse to an int
+        except ValueError:
+            return (settings['user_id_signed_out'], None)
+            
         password_raw = password_parts[2].rstrip()
         
         # Beginner's PROTIP: I would have written the return statement
@@ -192,12 +461,6 @@ class PADSUserHelper(PADSHelper):
         return self.user_from_db.nickname_short.startswith(
                 settings['ql_user_name_prefix'])
 
-    def user_is_registered(self):
-        if self.user_model.objects.filter(pk=self.user_id).exists():
-            return True
-        else:
-            return False
-    
     def user_has_signed_in(self):
         user = self.get_user_from_db()
         if user is not None:
@@ -209,9 +472,6 @@ class PADSUserHelper(PADSHelper):
         self.class_desc = 'PADS User Helper (for read operations)'
         self.password_hasher = kwargs.get('password_hasher', 
                                           PBKDF2PasswordHasher())
-        self.user_model = None
-        self.user_id = settings['user_id_signed_out']
-        self.set_user_model()  # This must be done before calling super()
         super().__init__(user_id, **kwargs)
         self.set_user_id(user_id)
     
@@ -287,7 +547,7 @@ class PADSWriteUserHelper(PADSWriteHelper):
             return None
         
     def get_user_from_db(self):
-        if self.user_is_registered:
+        if self.user_is_registered():
             if self.user_model.objects.filter(pk=self.user_id).exists():
                 return self.user_model.objects.get(pk=self.user_id)
             else:
@@ -333,12 +593,15 @@ class PADSWriteUserHelper(PADSWriteHelper):
         else:
             return False
         
-    def set_timezone(self, timezone_name):
+    def set_time_zone(self, timezone_name):
         user = self.get_user_from_db()
         if user is not None:
-            user.time_zone = timezone_name
-            user.save()
-            return True
+            if timezone_name in all_timezones:
+                user.time_zone = timezone_name
+                user.save()
+                return True
+            else:
+                return False
         else:
             return False
 
@@ -444,18 +707,12 @@ class PADSWriteUserHelper(PADSWriteHelper):
         nickname_suffix = self.generate_ql_password(
             settings['ql_user_name_suffix_length'], 
             1, settings['ql_new_password_chars'])
-        nickname_short = "{0} {1}".format(
+        nickname_short = "{0}{1}".format(
             settings['ql_user_name_prefix'], nickname_suffix)
         new_user = self.prepare_user_in_db(nickname_short, raw_password)
         
         output = (new_user, raw_password)
         return output
-
-    def user_is_registered(self):
-        if self.user_model.objects.filter(pk=self.user_id).exists():
-            return True
-        else:
-            return False
     
     #
     # Constructor

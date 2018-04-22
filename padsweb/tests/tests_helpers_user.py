@@ -33,15 +33,12 @@ blank_inputs = {
 # User Account Retrieval Helper Tests
 #
 
-# TODO: PADSUserHelper.set_user_id() Tests
-# TODO: PADSUserHelper.set_user_id_by_username() Tests
-# TODO: PADSUserHelper.check_ql_password() Tests
 class PADSUserHelperCheckPasswordTests(TestCase):
     """Unit tests for PADSUserHelper.check_password()"""
     @classmethod
     def setUpTestData(cls):
         # Sign up test User
-        cls.username = 'test-dave'
+        cls.username = 'test-dave-cp'
         cls.password = '    wxyzWXYZ_12345678'
         cls.write_user_helper = PADSWriteUserHelper()
         cls.write_user_helper.new(cls.username, cls.password)
@@ -73,13 +70,93 @@ class PADSUserHelperCheckPasswordTests(TestCase):
         self.assertFalse(read_user_helper_orphan.check_password(self.password),
                   'A User Helper with no User must fail to validate passwords')
 
+
+class PADSUserHelperCheckQlPasswordTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # Sign Up Quick List User
+        write_user_helper = PADSWriteUserHelper()
+        cls.ql_password = write_user_helper.new()
+        # Prepare User Helper for Test QL User
+        cls.read_user_helper = PADSUserHelper()
+        cls.ql_user_id = cls.read_user_helper.split_ql_password(
+                cls.ql_password)[0]
+        cls.read_user_helper.set_user_id(cls.ql_user_id)
+    
+    def test_check_ql_password_valid(self):
+        # Assertion
+        check = self.read_user_helper.check_ql_password(self.ql_password)
+        self.assertTrue(check,'A valid Quick List password must validate')
+    
+    def test_check_ql_password_wrong_password(self):
+        # Assertion
+        ql_password_wrong = secrets.token_urlsafe(
+                settings['message_max_length_short'])
+        check = self.read_user_helper.check_ql_password(ql_password_wrong)
+        self.assertFalse(check, 
+                     'An incorrect Quick List password must fail to validate')
+            
+    def test_check_ql_password_blank_input(self):
+        # Multi-Assertion
+        for i in blank_inputs:
+            check = self.read_user_helper.check_ql_password(i)
+            self.assertFalse(check,
+                        'A blank Quick List password must fail to validate')
+    
+    def test_check_ql_password_no_user(self):        
+        read_user_helper_orphan = PADSUserHelper()
+        # Assertions
+        check = read_user_helper_orphan.check_ql_password(self.ql_password)
+        self.assertFalse(check, 
+                  'A User Helper with no User must fail to validate passwords')
+
+class PADSUserHelperSetUserIdByUsernameTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # Sign up test User
+        cls.username = 'test-dave-suiu'
+        cls.password = '    hjklHJKL5678'
+        cls.write_user_helper = PADSWriteUserHelper()
+        cls.write_user_helper.new(cls.username, cls.password)
+        cls.user = PADSUser.objects.get(nickname_short=cls.username)
+        
+    def test_set_user_id_by_username_valid(self):
+        read_user_helper = PADSUserHelper()
+        read_user_helper.set_user_id_by_username(self.username)
+        # Assertion
+        self.assertEquals(read_user_helper.user_id, self.user.id,
+              'A User Helper must be able to be assigned to a registered user')
+
+    def test_set_user_id_by_username_invalid(self):
+        read_user_helper_i = PADSUserHelper()
+        random_username = secrets.token_urlsafe(
+                settings['message_max_length_short'])
+        read_user_helper_i.set_user_id_by_username(random_username)
+        # Assertions
+        self.assertEquals(read_user_helper_i.user_id, 
+                    settings['user_id_signed_out'],
+            'A User Helper cannot be assigned a User without a valid username')
+        self.assertFalse(read_user_helper_i.user_is_present(),
+          'User Helper must indicate failure setting invalid user by username')
+    
+    def test_set_user_id_by_username_blank_input(self):
+        read_user_helper_i2 = PADSUserHelper()
+        # Mult-Assertion
+        for i in blank_inputs:
+            read_user_helper_i2.set_user_id_by_username(i)
+            self.assertEquals(read_user_helper_i2.user_id,
+                              settings['user_id_signed_out'],
+                'User Helper cannot be assigened a User following blank input')
+            self.assertFalse(read_user_helper_i2.user_is_present(),
+                'User Helper must indicate it failed to set username')
+
 #
 # User Account Creation and Configuration Helper Tests
 #
 
 # Write Helper Tests
+# TODO: PADSWriteUserHelper.generate_ql_password()
 # TODO: PADSWriteUserHelper.merge_users_by_id() tests (valid, invalid ids)
-# TODO: PADSWriteUserHelper.set_timezone() tests (valid, invalid timezones)
 class PADSWriteUserHelperDeleteTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -92,7 +169,7 @@ class PADSWriteUserHelperDeleteTests(TestCase):
         cls.write_user_helper = PADSWriteUserHelper()
         cls.write_user_helper.new(cls.username_a, cls.password_a)
         cls.write_user_helper.new(cls.username_b, cls.password_b)
-            
+
     def test_delete_valid(self):
         user_a = PADSUser.objects.get(nickname_short=self.username_a)
         self.write_user_helper.set_user_id(user_a.id)
@@ -122,8 +199,7 @@ class PADSWriteUserHelperDeleteTests(TestCase):
         self.assertTrue(user_b_is_in,
                     'Other User must remain in database after failed deletion')
         self.assertFalse(op_result,
-                        'Helper must indicate failure of User deletion')
-    
+                        'Helper must indicate failure of User deletion')        
 
 class PADSWriteUserHelperNewTests(TestCase):
     """Unit tests for PADSWriteUserHelper.new() which creates user accounts"""
@@ -296,4 +372,51 @@ class PADSWriteUserHelperSetPasswordTests(TestCase):
                     'User\'s old password must continue to validate')            
             self.assertFalse(op_result, 
                'Helper must indicate failure to change to blank password')
+        
+class PADSWriteUserHelperSetTimezoneTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # Set Up User Helpers
+        read_user_helper = PADSUserHelper()
+        write_user_helper = PADSWriteUserHelper()
+        # Sign Up Test Quick List User
+        ql_password = write_user_helper.new()
+        cls.ql_user_id = read_user_helper.split_ql_password(ql_password)[0]        
+        cls.ql_user = PADSUser.objects.get(pk=cls.ql_user_id)
+
+    def test_set_timezone_valid(self):
+        tz_name = 'Australia/Sydney'
+        write_user_helper_stz = PADSWriteUserHelper(self.ql_user_id)
+        result = write_user_helper_stz.set_time_zone(tz_name)
+        ql_user = PADSUser.objects.get(pk=self.ql_user_id) # Reload User
+        # Assertion
+        self.assertTrue(result)
+        self.assertEquals(ql_user.time_zone, tz_name, 
+                          'User must be able to switch to a valid timezone')
+    
+    def test_set_timezone_invalid(self):
+        tz_name = 'Westeros/Pyke' # Not likely to be added to Olson tz db
+        tz_name_orig = self.ql_user.time_zone
+        write_user_helper_stz = PADSWriteUserHelper(self.ql_user_id)
+        result = write_user_helper_stz.set_time_zone(tz_name)
+        # Assertions
+        ql_user = PADSUser.objects.get(pk=self.ql_user_id) # Reload User
+        self.assertFalse(result)
+        self.assertNotEquals(ql_user.time_zone, tz_name, 
+                          'User must fail to switch to an invalid timezone')
+        self.assertEquals(ql_user.time_zone, tz_name_orig,
+                  'Timezone must remain the same after failed timezone change')
+    
+    def test_set_timezone_blank_input(self):
+        tz_name_orig = self.ql_user.time_zone
+        write_user_helper_stz = PADSWriteUserHelper(self.ql_user_id)
+        # Multi-Assertion
+        for i in blank_inputs:
+            result = write_user_helper_stz.set_time_zone(i)
+            user = PADSUser.objects.get(pk=self.ql_user_id) # Reload User
+            self.assertFalse(result)
+            self.assertNotEquals(user.time_zone, i, 
+                          'User must fail to switch to an invalid timezone')
+            self.assertEquals(user.time_zone, tz_name_orig,
+                 'Timezone must remain the same after failed timezone change')
         
