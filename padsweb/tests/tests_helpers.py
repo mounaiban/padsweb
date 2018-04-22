@@ -29,6 +29,20 @@ class PADSHelperTests(TestCase):
         # Get Test User id
         cls.user_id = cls.user.id
     
+    def test_get_user_from_db_valid(self):
+        helper = PADSHelper()
+        helper.set_user_id(self.user_id)
+        user_copy = helper.get_user_from_db()
+        self.assertEqual(user_copy.id, self.user.id,
+          'User info in database must be accessible when valid user id is set')
+        
+    def test_get_user_from_db_fake_user(self):
+        user_id = self.user_id_fake
+        helper = PADSHelper(user_id)
+        user_copy = helper.get_user_from_db()
+        self.assertEquals(user_copy, None,
+               'Helper must fail to access User info when invalid User is set')
+    
     def test_set_user_id_valid(self):
         helper = PADSHelper()
         helper.set_user_id(self.user_id)
