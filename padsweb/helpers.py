@@ -21,6 +21,15 @@ settings = defaults
 
 class PADSHelper:
     """Base class for other PADS helper classes"""
+    def get_user_from_db(self):
+        if self.user_is_registered():
+            if self.user_model.objects.filter(pk=self.user_id).exists():
+                return self.user_model.objects.get(pk=self.user_id)
+            else:
+                return None
+        else:
+            return None
+    
     def set_user_id(self, user_id):
         """Assigns a Helper to a User id. This is intended to assist access 
         control routines. Only valid User ids may be assigned. If the User is 
@@ -388,13 +397,7 @@ class PADSUserHelper(PADSHelper):
     to the lack of use of the page() and get_by_id() methods. This class is
     meant to only interact with one user account at a time, and the get_by_id()
     method is redundant due to the way this class is used.
-    """
-    def get_user_from_db(self):
-        if self.user_is_registered():
-            return self.user_model.objects.get(pk=self.user_id)
-        else:
-            return None
-    
+    """    
     def get_user_from_db_by_username(self, user_name):
         if isinstance(user_name, str):
             if self.user_model.objects.filter(
@@ -543,15 +546,6 @@ class PADSWriteUserHelper(PADSWriteHelper):
             new_user.save()
             return new_user.nickname_short
 
-        else:
-            return None
-        
-    def get_user_from_db(self):
-        if self.user_is_registered():
-            if self.user_model.objects.filter(pk=self.user_id).exists():
-                return self.user_model.objects.get(pk=self.user_id)
-            else:
-                return None
         else:
             return None
 
