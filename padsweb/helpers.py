@@ -196,6 +196,10 @@ class PADSReadTimerHelper(PADSReadHelper):
 
 class PADSWriteTimerHelper(PADSWriteHelper):
     def new(self, description, **kwargs):
+        """Creates a new Timer and saves it to the database.
+        Returns the new Timer's id as an int on success. Returns None on 
+        failure.
+        """
         if self.user_is_registered() is False:
             return None
         else:
@@ -217,7 +221,7 @@ class PADSWriteTimerHelper(PADSWriteHelper):
     def new_group(self, name):
         """Creates a new Timer Group and saves it to the database. 
         Returns the new Timer Group's id as an int on success. Returns None
-        on failure, or the id of the new Timer Group on success.
+        on failure.
         """
         if self.user_is_registered() is False:
             return None
@@ -255,7 +259,7 @@ class PADSWriteTimerHelper(PADSWriteHelper):
         
     def add_to_group(self, timer_id, group_id):
         if self.user_is_registered() is False:
-            return None
+            return False
         else:
             timer_exists = self.timer_model.objects.filter(
                     pk=timer_id).exists()
@@ -265,8 +269,10 @@ class PADSWriteTimerHelper(PADSWriteHelper):
                 group_inclusion = GroupInclusion()
                 group_inclusion.group_id = group_id
                 group_inclusion.timer_id = timer_id
+                group_inclusion.save()
+                return True
             else:
-                return None
+                return False
                 
     def remove_from_group(self, timer_id, group_id):
         if self.user_is_registered() is False:
