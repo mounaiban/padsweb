@@ -178,7 +178,11 @@ class PADSReadTimerHelper(PADSReadHelper):
         return None
 
     def get_resets_from_db_by_timer_id(self, timer_id):
-        return self.timer_log_model.objects.filter(timer_id=timer_id)    
+        timer_exists = self.get_all_from_db().filter(pk=timer_id).exists()
+        if timer_exists is True:
+            resets = self.timer_log_model.objects.filter(timer_id=timer_id)
+            return resets
+        return None
     
     #
     # Introspection and Constructor Methods
@@ -254,6 +258,7 @@ class PADSWriteTimerHelper(PADSWriteHelper):
             if timer_exists is True:
                 log_time = timezone.now()
                 new_log_entry = PADSTimerReset()
+                new_log_entry.reason = description
                 new_log_entry.timer_id = timer_id
                 new_log_entry.date_time = log_time
                 new_log_entry.save()
