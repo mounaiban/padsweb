@@ -168,10 +168,14 @@ class PADSReadTimerHelper(PADSReadHelper):
         return self.get_groups_all().filter(name__icontains=name)
 
     def get_groups_by_timer_id(self, timer_id):
-        timer = self.get_all_from_db().get(pk=timer_id, 
-                                    creator_user_id=self.user_id)
-        groups = timer.in_groups.all()
-        return groups
+        timer_exists = self.get_all_from_db().filter(
+                pk=timer_id, creator_user_id=self.user_id).exists()
+        if timer_exists is True:
+            timer = self.get_all_from_db().get(pk=timer_id, 
+                                        creator_user_id=self.user_id)
+            groups = timer.in_groups.all()
+            return groups
+        return None
 
     def get_resets_from_db_by_timer_id(self, timer_id):
         return self.timer_log_model.objects.filter(timer_id=timer_id)    
