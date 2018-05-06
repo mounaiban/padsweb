@@ -150,7 +150,7 @@ class PADSReadTimerHelperGetFromDbTests(TestCase):
         self.assertEqual(timer.id, self.timer_b1_id, 
                          'User B must get a Timer of a matching id')
 
-    def test_get_from_db_valid_public(self):
+    def test_get_from_db_valid_signed_out(self):
         read_timer_helper = PADSReadTimerHelper()
         timer = read_timer_helper.get_from_db(self.timer_a2_id)
         # Assertions
@@ -293,39 +293,383 @@ class PADSReadTimerHelperGetByPermalinkCodeTests(TestCase):
             self.assertIsNone(timer, 
                'User not signed in musn\'t get Timers without valid permalink')
 
-class PADSReadTimerGetGroupsByTimerIdTests(TestCase):
-    def setUpTestData(self):
-        raise NotImplementedError
+class PADSReadTimerHelperGetGroupsByTimerIdTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        
+        # Sign Up Main Test User and Write Timer Helper
+        username_a = 'test-dave-ggbt'
+        password_a = '     mnbvcMNBVC-98765'
+        cls.user_a = write_user_helper.prepare_user_in_db(
+                username_a, password_a)
+        cls.user_a.save()
+        write_timer_helper = PADSWriteTimerHelper(cls.user_a.id)        
+        
+        # Create Timer Groups for Test User
+        cls.tgroup_a1_desc = 'Test Timer Group A1'
+        cls.tgroup_a1_id = write_timer_helper.new_group(cls.tgroup_a1_desc)
+        cls.tgroup_a2_desc = 'Test Timer Group A2'
+        cls.tgroup_a2_id = write_timer_helper.new_group(cls.tgroup_a2_desc)        
+        
+        # Set Up Timers for Main Test User
+        cls.timer_a1_desc = 'Test Timer A1'
+        cls.timer_a1_id = write_timer_helper.new(cls.timer_a1_desc)
+        #  Add Timers to Groups
+        #  Timer A1 is added to Group A1. Group A2 is left without a Timer.
+        write_timer_helper.add_to_group(cls.timer_a1_id, cls.tgroup_a1_id)
         
     def test_get_groups_by_timer_id_valid_a(self):
-        raise NotImplementedError
+        read_timer_helper = PADSReadTimerHelper(self.user_a.id)
+        # Get ids of all groups associated with Test Timer A1
+        timer_groups = read_timer_helper.get_groups_by_timer_id(
+                self.timer_a1_id)
+        timer_group_ids = []
+        for tg in timer_groups:
+            timer_group_ids.append(tg.id)
+        # Assertions
+        self.assertIn(self.tgroup_a1_id, timer_group_ids,
+                      'A Timer must be included in a Group it was added to')
+        self.assertNotIn(self.tgroup_a2_id, timer_group_ids,
+                 'A Timer must be excluded from a Group it was never added to')
 
-    def test_get_groups_by_timer_id_valid_b(self):
-        raise NotImplementedError
+    def test_get_groups_by_timer_id_valid_ql(self):
+        # Note: This test differs from test_get_groups_by_timer_id_valid().
+        #  It tests the behaviour of multiple Timers sharing the same 
+        #  Group instead.
+        # Sign up Quick List User and Timer Helper
+        user_q = write_user_helper.prepare_ql_user_in_db()[0]
+        user_q.save()
+        read_timer_helper = PADSReadTimerHelper(user_q.id)
+        write_timer_helper = PADSWriteTimerHelper(user_q.id)
+        # Create Timers for Test QL User
+        timer_q1_desc = 'Test Timer Q1'
+        timer_q1_id = write_timer_helper.new(timer_q1_desc)
+        timer_q2_desc = 'Test Timer Q2'
+        timer_q2_id = write_timer_helper.new(timer_q2_desc)
+        # Create Timer Group
+        tgroup_q1_desc = 'Timer Group Q1'
+        tgroup_q1_id = write_timer_helper.new_group(tgroup_q1_desc)
+        # Add both Timers to the Timer Group
+        write_timer_helper.add_to_group(timer_q1_id, tgroup_q1_id)
+        write_timer_helper.add_to_group(timer_q2_id, tgroup_q1_id)
+        # Get Timer Group ids associated with Timers
+        timer_groups_q1 = read_timer_helper.get_groups_by_timer_id(timer_q1_id)
+        timer_q1_group_ids = []
+        for tg in timer_groups_q1:
+            timer_q1_group_ids.append(tg.id)
+        timer_groups_q2 = read_timer_helper.get_groups_by_timer_id(timer_q2_id)
+        timer_q2_group_ids = []
+        for tg in timer_groups_q2:
+            timer_q2_group_ids.append(tg.id)
+        # Assertions
+        self.assertIn(tgroup_q1_id, timer_q1_group_ids,
+                      'Timer Q1 must be present in Timer Group Q1')
+        self.assertIn(tgroup_q1_id, timer_q2_group_ids,
+                      'Timer Q2 must be present in Timer Group Q1')
 
-    def test_get_groups_by_timer_id_valid_public(self):
-        raise NotImplementedError
+    def test_get_groups_by_timer_id_valid_signed_out(self):
+        read_timer_helper = PADSReadTimerHelper()
+        tgroups = read_timer_helper.get_groups_by_timer_id(self.timer_a1_id)
+        # Assertions
+        self.assertIsNone(tgroups,
+                  'Timer Groups must not be returned while user is signed out')
         
     def test_get_groups_by_timer_id_wrong_user_a(self):
-        raise NotImplementedError
+        # Set up second Test User
+        username_b = 'not-test-dave'
+        password_b = '     fghjFGHJ4567'
+        user_b = write_user_helper.prepare_user_in_db(username_b, password_b)
+        user_b.save()
+        # Get Timer Groups
+        read_timer_helper = PADSReadTimerHelper(user_b.id)
+        tgroups = read_timer_helper.get_groups_by_timer_id(self.timer_a1_id)
+        # Assertions
+        self.assertIsNone(tgroups,
+                          'A User cannot load another User\'s Timer Groups')
     
     def test_get_groups_by_timer_id_invalid_id(self):
-        raise NotImplementedError
-    
+        read_timer_helper = PADSReadTimerHelper(self.user_a.id)
+        tgroups = read_timer_helper.get_groups_by_timer_id(-9999)
+        # Assertions
+        self.assertIsNone(tgroups,
+               'Timer Groups must not be returned with an invalid Timer id')
 
-class PADSReadTimerGetResetsByTimerIdTests(TestCase):
-# TODO: PADSReadTimerHelper.get_resets_by_timer_id() (valid, wrong user, not signed in)
-    def setUpTestData(self):
-        raise NotImplementedError
+class PADSReadTimerHelperGetResetsByTimerIdTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # Sign Up Test Users and Timer Helpers
+        #  User A
+        username_a = 'test-dave-grbt'
+        password_a = '     yuiopYUIOP1212121212'
+        cls.user_a = write_user_helper.prepare_user_in_db(username_a, 
+                                                          password_a)
+        cls.user_a.save()
+        write_timer_helper_a = PADSWriteTimerHelper(cls.user_a.id)
+        cls.read_timer_helper_a = PADSReadTimerHelper(cls.user_a.id)
+        #  User B
+        username_b = 'not-test-dave'
+        password_b = password_a
+        cls.user_b = write_user_helper.prepare_user_in_db(username_b,
+                                                          password_b)
+        cls.user_b.save()        
+        write_timer_helper_b = PADSWriteTimerHelper(cls.user_b.id)
+        cls.read_timer_helper_b = PADSReadTimerHelper(cls.user_b.id)
+        #  Quick List User
+        cls.user_q = write_user_helper.prepare_ql_user_in_db()[0]
+        cls.user_q.save()
+        write_timer_helper_q = PADSWriteTimerHelper(cls.user_q.id)
+        cls.read_timer_helper_q = PADSReadTimerHelper(cls.user_q.id)
+        # Create Timers and Log Entries for Test Users
+        #  User A
+        cls.timer_a1_desc = 'Test Timer A1 by User A'
+        cls.timer_a1_id = write_timer_helper_a.new(cls.timer_a1_desc)
+        cls.logent_a1_desc = 'Log Entry for Timer A1 by User A'
+        cls.logent_a1_id = write_timer_helper_a.new_log_entry(
+                cls.timer_a1_id, cls.logent_a1_desc)
+        cls.timer_a2_desc = 'Test Timer A2 by User A (Public)'
+        cls.timer_a2_id = write_timer_helper_a.new(cls.timer_a2_desc, 
+                                                   public=True)
+        cls.logent_a2_desc = 'Log Entry for Timer A2 by User A (Public)'
+        cls.logent_a2_id = write_timer_helper_a.new_log_entry(
+                cls.timer_a2_id, cls.logent_a2_desc)
+        #  User B
+        cls.timer_b1_desc = 'Test Timer B1 by User B'
+        cls.timer_b1_id = write_timer_helper_b.new(cls.timer_b1_desc)
+        cls.logent_b1_desc = 'Log Entry B1 for Timer B1 by User B'
+        cls.logent_b1_id = write_timer_helper_b.new_log_entry(
+                cls.timer_b1_id, cls.logent_b1_desc)
+        #  Quick List User
+        cls.timer_q1_desc = 'Test Timer Q1 by QL User'
+        cls.timer_q1_id = write_timer_helper_q.new(cls.timer_q1_desc)
+        cls.logent_q1_desc = 'Log Entry Q1 for Timer Q1 by QL User'
+        cls.logent_q1_id = write_timer_helper_q.new_log_entry(
+                cls.timer_q1_id, cls.logent_q1_desc)
     
+    def get_reset_reason_list(self, timer_id, read_timer_helper):
+        resets = read_timer_helper.get_resets_from_db_by_timer_id(timer_id)
+        if resets is None:
+            return None
+        reasons = []
+        for r in resets:
+            reasons.append(r.reason)
+        return reasons
+            
+    def get_reset_id_list(self, timer_id, read_timer_helper):
+        resets = read_timer_helper.get_resets_from_db_by_timer_id(timer_id)
+        if resets is None:
+            return None
+        ids = []
+        for r in resets:
+            ids.append(r.id)
+        return ids
     
+    def test_get_resets_by_timer_id_valid_a(self):
+        logent_ids = self.get_reset_id_list(self.timer_a1_id, 
+                                            self.read_timer_helper_a)
+        logent_descs = self.get_reset_reason_list(self.timer_a1_id, 
+                                                  self.read_timer_helper_a)
+        # Asserts
+        self.assertIn(self.logent_a1_id, logent_ids)
+        self.assertIn(self.logent_a1_desc, logent_descs)
+        self.assertNotIn(self.logent_b1_id, logent_ids)
+        self.assertNotIn(self.logent_q1_id, logent_ids)
+        
+    def test_get_resets_by_timer_id_valid_public_a(self):
+        logent_ids = self.get_reset_id_list(self.timer_a2_id, 
+                                            self.read_timer_helper_a)
+        logent_descs = self.get_reset_reason_list(self.timer_a2_id, 
+                                                  self.read_timer_helper_a)
+        # Asserts
+        self.assertIn(self.logent_a2_id, logent_ids)
+        self.assertIn(self.logent_a2_desc, logent_descs)
+        self.assertNotIn(self.logent_b1_id, logent_ids)
+        self.assertNotIn(self.logent_q1_id, logent_ids)
+            
+    def test_get_resets_by_timer_id_valid_ql(self):
+        logent_ids = self.get_reset_id_list(self.timer_q1_id, 
+                                            self.read_timer_helper_q)
+        logent_descs = self.get_reset_reason_list(self.timer_q1_id, 
+                                                  self.read_timer_helper_q)
+        # Asserts
+        self.assertIn(self.logent_q1_id, logent_ids)
+        self.assertIn(self.logent_q1_desc, logent_descs)
+        self.assertNotIn(self.logent_a1_id, logent_ids)
+        self.assertNotIn(self.logent_b1_id, logent_ids)
+        
+    def test_get_resets_by_timer_id_valid_public_ql(self):
+        logent_ids = self.get_reset_id_list(self.timer_a2_id, 
+                                            self.read_timer_helper_q)
+        logent_descs = self.get_reset_reason_list(self.timer_a2_id, 
+                                                  self.read_timer_helper_q)
+        # Asserts
+        self.assertIn(self.logent_a2_id, logent_ids)
+        self.assertIn(self.logent_a2_desc, logent_descs)
+        self.assertNotIn(self.logent_a1_id, logent_ids)
+        self.assertNotIn(self.logent_b1_id, logent_ids)
+        self.assertNotIn(self.logent_q1_id, logent_ids)
+        
+    def test_get_resets_by_timer_id_valid_public_signed_out(self):
+        read_timer_helper = PADSReadTimerHelper()
+        logent_ids = self.get_reset_id_list(self.timer_a2_id,read_timer_helper)
+        logent_descs = self.get_reset_reason_list(self.timer_a2_id,
+                                                  read_timer_helper)
+        # Asserts
+        self.assertIn(self.logent_a2_id, logent_ids)
+        self.assertIn(self.logent_a2_desc, logent_descs)
+        self.assertNotIn(self.logent_a1_id, logent_ids)
+        self.assertNotIn(self.logent_b1_id, logent_ids)
+        self.assertNotIn(self.logent_q1_id, logent_ids)
+
+    def test_get_resets_by_timer_id_signed_out(self):
+        read_timer_helper = PADSReadTimerHelper()
+        logent_ids = self.get_reset_id_list(self.timer_a1_id,read_timer_helper)
+        logent_descs = self.get_reset_reason_list(self.timer_a1_id,
+                                                  read_timer_helper)
+        # Asserts
+        self.assertIsNone(logent_descs)
+        self.assertIsNone(logent_ids)
+    
+    def test_get_resets_by_timer_id_wrong_user_a(self):
+        logent_ids = self.get_reset_id_list(self.timer_a1_id,
+                                            self.read_timer_helper_b)
+        logent_descs = self.get_reset_reason_list(self.timer_a1_id,
+                                            self.read_timer_helper_b)
+        # Asserts
+        self.assertIsNone(logent_descs)
+        self.assertIsNone(logent_ids)
+    
+    def test_get_groups_by_timer_id_invalid_id(self):
+        logent_ids = self.get_reset_id_list(-9999, self.read_timer_helper_a)
+        logent_descs = self.get_reset_reason_list(-9999, 
+                                                  self.read_timer_helper_a)
+        # Asserts
+        self.assertIsNone(logent_descs)
+        self.assertIsNone(logent_ids)
+
+    def test_get_groups_by_timer_id_invalid_id_signed_out(self):
+        read_timer_helper = PADSReadTimerHelper()
+        logent_ids = self.get_reset_id_list(-9999, read_timer_helper)
+        logent_descs = self.get_reset_reason_list(-9999, read_timer_helper)
+        # Asserts
+        self.assertIsNone(logent_descs)
+        self.assertIsNone(logent_ids)
+
 
 #
 # Write Helper Tests
 #
-# TODO: PADSWriteTimerHelper.new() (valid, not signed in, bad input)
-# TODO: PADSWriteTimerHelper.delete() (valid, not signed in, wrong user, bad input)
-# TODO: PADSWriteTimerHelper.set_description() (valid, not signed in, wrong user, bad input)
-# TODO: PADSWriteTimerHelper.stop_by_id() (valid, not signed in, wrong user, bad input)
-# TODO: PADSWriteTimerHelper.restart_by_id() (valid, not signed in, wrong user, bad input)
+class PADSWriteTimerHelperNewTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        raise NotImplementedError
+    
+    def test_new_valid(self):
+        raise NotImplementedError
+        
+    def test_new_valid_opening_message(self):
+        raise NotImplementedError
+    
+    def test_new_valid_historical(self):
+        raise NotImplementedError
+        
+    def test_new_valid_historical_not_running(self):
+        raise NotImplementedError
+    
+    def test_new_valid_public(self):
+        raise NotImplementedError
+    
+    def test_new_signed_out(self):
+        raise NotImplementedError
+    
+    def test_new_bad_description(self):
+        raise NotImplementedError
+    
+class PADSWriteTimerHelperNewLogEntryTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        raise NotImplementedError
 
+class PADSWriteTimerHelperAddToGroupTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        raise NotImplementedError
+
+class PADSWriteTimerHelperNewGroupTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        raise NotImplementedError
+
+class PADSWriteTimerHelperDeleteGroupTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        raise NotImplementedError
+
+class PADSWriteTimerHelperRemoveFromGroupTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        raise NotImplementedError
+
+class PADSWriteTimerHelperDeleteTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        raise NotImplementedError
+    
+    def test_delete_valid_a(self):
+        raise NotImplementedError
+
+    def test_delete_valid_b(self):
+        raise NotImplementedError
+    
+    def test_delete_signed_out(self):
+        raise NotImplementedError
+    
+    def test_delete_invalid_wrong_user_a(self):
+        raise NotImplementedError
+
+    def test_delete_invalid_id(self):
+        raise NotImplementedError
+
+class PADSWriteTimerHelperSetDescriptionTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        raise NotImplementedError
+    
+    def test_set_description_valid_a(self):
+        raise NotImplementedError
+
+    def test_set_description_valid_b(self):
+        raise NotImplementedError
+    
+    def test_set_description_signed_out(self):
+        raise NotImplementedError
+
+    def test_set_description_bad_description(self):
+        raise NotImplementedError
+    
+    def test_set_description_wrong_user_a(self):
+        raise NotImplementedError
+
+class PADSWriteTimerHelperResetByIdTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        raise NotImplementedError
+    
+    def test_reset_by_id_valid_a(self):
+        raise NotImplementedError
+
+    def test_reset_by_id_valid_b(self):
+        raise NotImplementedError
+    
+    def test_reset_by_id_signed_out(self):
+        raise NotImplementedError
+
+    def test_reset_by_id_bad_reason_a(self):
+        raise NotImplementedError
+
+    def test_reset_by_id_invalid_id(self):
+        raise NotImplementedError
+
+class PADSWriteTimerHelperStopByIdTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        raise NotImplementedError
