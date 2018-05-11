@@ -210,19 +210,34 @@ class PADSWriteTimerHelper(PADSWriteHelper):
         """
         if self.user_is_registered() is False:
             return None
+        elif isinstance(description, str) is False:
+            return None
+        elif len(description) <= 0:
+            return None
+        elif description.isspace() is True:
+            return None
         else:
             creation_time = timezone.now()
+            count_from_date_time = kwargs.get(
+                    'count_from_date_time', creation_time)
+            historical = kwargs.get('historical', False)
+            public = kwargs.get('public', False)
+            running = kwargs.get('running', True)
+            if (historical is True) & (running is False):
+                # A Historical Timer cannot be created non-running,
+                # as this will result in a non-functional timer.
+                # A HT cannot be reset.
+                return None
             new_timer = PADSTimer()
             new_timer.creator_user_id = self.user_id
             new_timer.description = description
-            new_timer.count_from_date_time = kwargs.get(
-                    'count_from_date_time', creation_time)
+            new_timer.count_from_date_time = count_from_date_time
             new_timer.creation_date_time = creation_time
-            new_timer.historical = kwargs.get('historical', False)
+            new_timer.historical = historical
             new_timer.permalink_code = secrets.token_urlsafe(
                     settings['timer_permalink_code_length'])
-            new_timer.public = kwargs.get('public', False)
-            new_timer.running = kwargs.get('running', True)
+            new_timer.public = public
+            new_timer.running = running
             new_timer.save()
             return new_timer.id
     
