@@ -9,7 +9,7 @@ from django.test import TestCase
 from django.utils import timezone
 from padsweb.helpers import PADSReadTimerHelper, PADSWriteTimerHelper
 from padsweb.helpers import PADSWriteUserHelper
-from padsweb.models import PADSTimer
+from padsweb.models import PADSTimer, PADSTimerReset
 from padsweb.settings import defaults
 
 #
@@ -197,7 +197,7 @@ class PADSReadTimerHelperGetByPermalinkCodeTests(TestCase):
         
         def new_timer_get_permalink(user_id, description, **kwargs):
             write_timer_helper = PADSWriteTimerHelper(user_id)
-            timer_id = write_timer_helper.new(user_id, **kwargs)
+            timer_id = write_timer_helper.new(description, **kwargs)
             timer = PADSTimer.objects.get(pk=timer_id)
             return timer.permalink_code
             
@@ -561,29 +561,126 @@ class PADSReadTimerHelperGetResetsByTimerIdTests(TestCase):
 class PADSWriteTimerHelperNewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        raise NotImplementedError
-    
-    def test_new_valid(self):
-        raise NotImplementedError
+        # Sign Up Test User and Timer Helpers
+        username_a = 'test-jess-hnt'
+        password_a = '    ertyERTY553-355'
+        cls.user_a = write_user_helper.prepare_user_in_db(username_a, 
+                                                          password_a)
+        cls.user_a.save()
+        cls.write_timer_helper_a = PADSWriteTimerHelper(cls.user_a.id)
+        cls.read_timer_helper_a = PADSReadTimerHelper(cls.user_a.id)
         
+    def test_new_valid(self):
+        timer_a_desc = 'Test Timer A by Test User A'
+        timer_a_id = self.write_timer_helper_a.new(timer_a_desc)
+        # Assertions
+        timer_assert = PADSTimer.objects.get(pk=timer_a_id)
+        self.assertEquals(timer_a_desc, timer_assert.description,
+                      'Timer Description must be the same as declared by User')
+        self.assertEquals(timer_assert.creator_user_id, self.user_a.id,
+                          'Creator User id must be correctly assigned')
+        self.assertFalse(timer_assert.historical,
+                         'Timer must be non-historical by default')
+        self.assertFalse(timer_assert.public, 
+                         'Timer must be private by default')    
+        self.assertTrue(timer_assert.running, 
+                        'Timer must be running by default')
+    
+    def test_new_valid_ql(self):
+        # Sign Up Test Quick List User and Timer Helper
+        user_ql = write_user_helper.prepare_ql_user_in_db()[0]
+        user_ql.save()
+        write_timer_helper_q = PADSWriteTimerHelper(user_ql.id)
+        # Create Timers as QL User
+        timer_q_desc = 'Test Timer by Quick List User'
+        timer_q_id = write_timer_helper_q.new(timer_q_desc)
+        # Assertions
+        timer_assert= PADSTimer.objects.get(pk=timer_q_id)
+        self.assertEquals(timer_assert.creator_user_id, user_ql.id,
+                          'Creator User id must be correctly assigned')
+                
     def test_new_valid_opening_message(self):
-        raise NotImplementedError
+        timer_am_desc = 'Test Timer A by Test User A with Message'
+        timer_am_opmesg = 'Opening Message by Test User A'
+        timer_am_id = self.write_timer_helper_a.new(
+                    timer_am_desc,message=timer_am_opmesg)
+        # Assertions
+        logent = PADSTimerReset.objects.filter(timer_id=timer_am_id)[0]
+        self.assertIn(logent.reason, timer_am_opmesg)
+        
     
     def test_new_valid_historical(self):
-        raise NotImplementedError
+        timer_ah_desc = 'Test Historical Timer A by Test User A'
+        timer_ah_id = self.write_timer_helper_a.new(
+                timer_ah_desc,historical=True)
+        # Assertions
+        timer_assert = PADSTimer.objects.get(pk=timer_ah_id)
+        self.assertEquals(timer_ah_id, timer_assert.id,
+                              'Correct Timer id must be returned on creation')
+        self.assertTrue(timer_assert.historical,
+                     'Helper must be able to set Historical flag on creation')
         
-    def test_new_valid_historical_not_running(self):
-        raise NotImplementedError
-    
     def test_new_valid_public(self):
-        raise NotImplementedError
+        timer_ap_desc = 'Test Public Timer A by Test User A'
+        timer_ap_id = self.write_timer_helper_a.new(
+                timer_ap_desc,public=True)
+        # Assertions
+        timer_assert = PADSTimer.objects.get(pk=timer_ap_id)
+        self.assertEquals(timer_ap_id, timer_assert.id,
+                              'Correct Timer id must be returned on creation')
+        self.assertTrue(timer_assert.public,
+                            'Helper must be able to create new public Timers')
+
+    def test_new_historical_not_running(self):
+        timer_ahn_desc = 'Test Non-running Historical Timer A by Test User A'
+        timer_ahn_id = self.write_timer_helper_a.new(
+                timer_ahn_desc,historical=True,running=False)
+        # Assertions
+        #  Reminder: Historical Timers cannot be reset, so creating a 
+        #  non-running Historical Timer is not allowed.
+        timer_exists = PADSTimer.objects.filter(
+                description=timer_ahn_desc).exists()
+        self.assertIsNone(timer_ahn_id,
+                             'Historical Timers cannot be created non-running')
+        self.assertFalse(timer_exists,
+                    'New non-running Historical Timer must not be in database')
     
     def test_new_signed_out(self):
-        raise NotImplementedError
+        write_timer_helper_s = PADSWriteTimerHelper()
+        timer_s_desc = 'Test Timer by Signed Out User'
+        timer_s_id = write_timer_helper_s.new(timer_s_desc)
+        timer_created = PADSTimer.objects.filter(
+                description=timer_s_desc).exists()
+        # Assertions
+        self.assertIsNone(timer_s_id,
+             'Helper must indicate failure to save Timers for signed-out User')
+        self.assertFalse(timer_created, 
+                      'Timer created by signed-out User cannot be in database')
     
     def test_new_bad_description(self):
-        raise NotImplementedError
-    
+        # Multi-assertion
+        for s in bad_str_inputs.values():
+            timer_id = self.write_timer_helper_a.new(s)
+            timer_created = PADSTimer.objects.filter(description=s).exists()
+            if timer_created is True:
+                print('Timer Desc: {0}'.format(s))                
+            self.assertIsNone(timer_id,
+                 'Must indicate Timer creation failure (signed in, bad desc.)')
+            self.assertFalse(timer_created,
+                       'Timers with a bad description must not be in database')
+        
+    def test_new_bad_description_signed_out(self):
+        write_timer_helper_s = PADSWriteTimerHelper()
+        # Multi-assertion
+        for s in bad_str_inputs.values():
+            timer_id = write_timer_helper_s.new(s)
+            timer_created = PADSTimer.objects.filter(description=s).exists()
+            self.assertIsNone(timer_id,
+                 'Must indicate Timer creation failure (signed in, bad desc.)')
+            self.assertFalse(timer_created,
+                       'Timers with a bad description must not be in database')
+
+
 class PADSWriteTimerHelperNewLogEntryTests(TestCase):
     @classmethod
     def setUpTestData(cls):
