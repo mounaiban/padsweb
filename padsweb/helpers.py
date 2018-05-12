@@ -217,28 +217,15 @@ class PADSWriteTimerHelper(PADSWriteHelper):
         elif description.isspace() is True:
             return None
         else:
-            creation_time = timezone.now()
-            count_from_date_time = kwargs.get(
-                    'count_from_date_time', creation_time)
-            historical = kwargs.get('historical', False)
-            public = kwargs.get('public', False)
-            running = kwargs.get('running', True)
-            if (historical is True) & (running is False):
-                # A Historical Timer cannot be created non-running,
-                # as this will result in a non-functional timer.
-                # A HT cannot be reset.
+            new_timer = self.prepare_timer_in_db(description, **kwargs)
+            if new_timer is None:
                 return None
-            new_timer = PADSTimer()
-            new_timer.creator_user_id = self.user_id
-            new_timer.description = description
-            new_timer.count_from_date_time = count_from_date_time
-            new_timer.creation_date_time = creation_time
-            new_timer.historical = historical
-            new_timer.permalink_code = secrets.token_urlsafe(
-                    settings['timer_permalink_code_length'])
-            new_timer.public = public
-            new_timer.running = running
-            new_timer.save()
+            
+            with transaction.atomic():
+                new_timer.save()
+                message = kwargs.get('message', 
+                                      labels['TIMER_DEFAULT_CREATION_REASON'])
+                self.new_log_entry(new_timer.id, message)
             return new_timer.id
     
     def new_group(self, name):
@@ -402,6 +389,34 @@ class PADSWriteTimerHelper(PADSWriteHelper):
                 timer.save()
             
             return True
+        
+    #
+    # New Timer Preparation Method
+    #
+    def prepare_timer_in_db(self, description, **kwargs):
+        new_timer = PADSTimer()
+        creation_time = timezone.now()
+        count_from_date_time = kwargs.get(
+                'count_from_date_time', creation_time)
+        historical = kwargs.get('historical', False)
+        public = kwargs.get('public', False)
+        running = kwargs.get('running', True)
+        if (historical is True) & (running is False):
+            # A Historical Timer cannot be created non-running,
+            # as this will result in a non-functional timer.
+            # A HT cannot be reset.
+            return None
+        new_timer.creator_user_id = self.user_id
+        new_timer.description = description
+        new_timer.count_from_date_time = count_from_date_time
+        new_timer.creation_date_time = creation_time
+        new_timer.historical = historical
+        new_timer.permalink_code = secrets.token_urlsafe(
+                settings['timer_permalink_code_length'])
+        new_timer.public = public
+        new_timer.running = running
+        return new_timer
+
 
     #
     # Introspection and Constructor Methods
