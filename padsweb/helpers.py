@@ -304,6 +304,8 @@ class PADSWriteTimerHelper(PADSWriteHelper):
     def delete(self, timer_id):
         if self.user_is_registered() is False:
             return False
+        elif isinstance(timer_id, int) is False:
+            return False
         else:
             timer_exists = self.timer_model.objects.filter(
                     pk=timer_id).exists()
