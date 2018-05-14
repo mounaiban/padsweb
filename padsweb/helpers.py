@@ -307,10 +307,13 @@ class PADSWriteTimerHelper(PADSWriteHelper):
         elif isinstance(timer_id, int) is False:
             return False
         else:
-            timer_exists = self.timer_model.objects.filter(
-                    pk=timer_id).exists()
+            # Restrict access of Timers to those created by assigned User
+            # of matching id
+            timers_available = self.timer_model.objects.filter(
+                    creator_user_id=self.user_id) 
+            timer_exists = timers_available.filter(pk=timer_id).exists()
             if timer_exists is True:
-                timer = self.timer_model.objects.get(pk=timer_id)
+                timer = timers_available.get(pk=timer_id)
                 timer.delete()
                 return True
             else:
