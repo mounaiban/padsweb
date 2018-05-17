@@ -11,7 +11,7 @@ from padsweb.helpers import PADSReadTimerHelper, PADSWriteTimerHelper
 from padsweb.helpers import PADSWriteUserHelper
 from padsweb.models import PADSTimer, PADSTimerReset
 from padsweb.settings import defaults
-
+import time
 #
 # Shared Test Items
 #
@@ -709,23 +709,196 @@ class PADSWriteTimerHelperRemoveFromGroupTests(TestCase):
 class PADSWriteTimerHelperDeleteTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        raise NotImplementedError
-    
+        # Set Up Test Users and Write Timer Helpers
+        #  Test User A
+        username_a = 'test-jess-thdt'
+        password_a = '       ^^^^opopoOPOPOP1234'
+        cls.user_a = write_user_helper.prepare_user_in_db(
+                username_a, password_a)
+        cls.user_a.save()
+        cls.write_timer_helper_a = PADSWriteTimerHelper(cls.user_a.id)
+        #  Test User B
+        username_b = 'not-jess'
+        password_b = password_a
+        cls.user_b = write_user_helper.prepare_user_in_db(
+                username_b, password_b)
+        cls.user_b.save()
+        cls.write_timer_helper_b = PADSWriteTimerHelper(cls.user_b.id)
+        # Test Quick List User
+        cls.user_q = write_user_helper.prepare_ql_user_in_db()[0]
+        cls.user_q.save()
+        cls.write_timer_helper_q = PADSWriteTimerHelper(cls.user_q.id)
+        
+        # Set Up Test Timers
+        #  Public Timers are used in this test to ensure that the Helpers
+        #  are able to tell between granting write and read access.
+        #  Test User A's Timer
+        timer_a1_p_desc = 'Test Timer A1 by Test User A (Public)'
+        cls.timer_a1_p_id = cls.write_timer_helper_a.new(
+                timer_a1_p_desc, public=True)
+        #  Test User B's Timer
+        timer_b1_p_desc = 'Test Timer B1 by Test User B (Public)'
+        cls.timer_b1_p_id = cls.write_timer_helper_b.new(
+                timer_b1_p_desc, public=True)
+        #  Test QL User's Timer
+        timer_q1_p_desc = 'Test Timer Q1 by Test QL User (Public)'
+        cls.timer_q1_p_id = cls.write_timer_helper_q.new(
+                timer_q1_p_desc, public=True)
+        
     def test_delete_valid_a(self):
-        raise NotImplementedError
-
+        del_result = self.write_timer_helper_a.delete(self.timer_a1_p_id)
+        timer_a1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_a1_p_id).exists()
+        timer_b1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_b1_p_id).exists()
+        timer_q1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_q1_p_id).exists()
+        # Assertions
+        self.assertTrue(
+                del_result, 'Must indicate success of deletion by User A.')
+        self.assertFalse(
+                timer_a1_p_exists, 'Timer A1 must no longer exist in database')
+        self.assertTrue(
+                timer_b1_p_exists, 'Timer B1 must remain in database')
+        self.assertTrue(
+                timer_q1_p_exists, 'Timer Q1 must remain in database')
+        
     def test_delete_valid_b(self):
-        raise NotImplementedError
+        del_result = self.write_timer_helper_b.delete(self.timer_b1_p_id)
+        timer_a1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_a1_p_id).exists()
+        timer_b1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_b1_p_id).exists()
+        timer_q1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_q1_p_id).exists()
+        # Assertions
+        self.assertTrue(
+                del_result, 'Must indicate success of deletion by User B.')
+        self.assertTrue(
+                timer_a1_p_exists, 'Timer A1 must remain in database')
+        self.assertFalse(
+                timer_b1_p_exists, 'Timer B1 must no longer exist in database')
+        self.assertTrue(
+                timer_q1_p_exists, 'Timer Q1 must remain in database')
+    
+    def test_delete_valid_q(self):
+        del_result = self.write_timer_helper_q.delete(self.timer_q1_p_id)
+        timer_a1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_a1_p_id).exists()
+        timer_b1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_b1_p_id).exists()
+        timer_q1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_q1_p_id).exists()
+        # Assertions
+        self.assertTrue(
+                del_result, 'Must indicate success of deletion by QL User')
+        self.assertTrue(
+                timer_a1_p_exists, 'Timer A1 must remain in database')
+        self.assertTrue(
+                timer_b1_p_exists, 'Timer B1 must remain in database')
+        self.assertFalse(
+                timer_q1_p_exists, 'Timer Q1 must no longer exist in database')
     
     def test_delete_signed_out(self):
-        raise NotImplementedError
-    
-    def test_delete_invalid_wrong_user_a(self):
-        raise NotImplementedError
+        write_timer_helper = PADSWriteTimerHelper()
+        del_a_result = write_timer_helper.delete(self.timer_a1_p_id)
+        del_b_result = write_timer_helper.delete(self.timer_b1_p_id)
+        del_q_result = write_timer_helper.delete(self.timer_q1_p_id)
+        timer_a1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_a1_p_id).exists()
+        timer_b1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_b1_p_id).exists()
+        timer_q1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_q1_p_id).exists()
+        # Assertions
+        self.assertFalse(del_a_result,
+                 'Must indicate failure to delete Timer A1 by signed out User')
+        self.assertFalse(del_b_result,
+                 'Must indicate failure to delete Timer B1 by signed out User')
+        self.assertFalse(del_q_result,
+                 'Must indicate failure to delete Timer Q1 by signed out User')
+        self.assertTrue(
+                timer_a1_p_exists, 'Timer A1 must remain in database')
+        self.assertTrue(
+                timer_b1_p_exists, 'Timer B1 must remain in database')
+        self.assertTrue(
+                timer_q1_p_exists, 'Timer Q1 must remain in database')
+        
+    def test_delete_invalid_id_a(self):
+        # Multi-assertion
+        for i in bad_str_inputs.values():    
+            del_result = self.write_timer_helper_a.delete(i)
+            timer_a1_p_exists = PADSTimer.objects.filter(
+                    pk=self.timer_a1_p_id).exists()
+            timer_b1_p_exists = PADSTimer.objects.filter(
+                    pk=self.timer_b1_p_id).exists()
+            timer_q1_p_exists = PADSTimer.objects.filter(
+                    pk=self.timer_q1_p_id).exists()
+            self.assertFalse(
+                    del_result, 
+                    'Must indicate failure by User A to delete invalid Timer')
+            self.assertTrue(
+                    timer_a1_p_exists, 'Timer A1 must remain in database')
+            self.assertTrue(
+                    timer_b1_p_exists, 'Timer B1 must remain in database')
+            self.assertTrue(
+                    timer_q1_p_exists, 'Timer Q1 must remain in database')        
 
-    def test_delete_invalid_id(self):
-        raise NotImplementedError
+    def test_delete_wrong_user_a(self):
+        del_result_a_nb = self.write_timer_helper_a.delete(self.timer_b1_p_id)
+        del_result_a_nq = self.write_timer_helper_a.delete(self.timer_q1_p_id)
+        timer_a1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_a1_p_id).exists()
+        timer_b1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_b1_p_id).exists()
+        timer_q1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_q1_p_id).exists()
+        # Assertions
+        self.assertFalse(del_result_a_nb, 
+                         'User A must fail to delete User B\'s Timer')
+        self.assertFalse(del_result_a_nq,
+                         'User A must fail to delete QL User\'s Timer')
+        self.assertTrue(timer_a1_p_exists, 'Timer A1 must remain in database')
+        self.assertTrue(timer_b1_p_exists, 'Timer B1 must remain in database')
+        self.assertTrue(timer_q1_p_exists, 'Timer Q1 must remain in database')
 
+    def test_delete_wrong_user_b(self):
+        del_result_b_na = self.write_timer_helper_b.delete(self.timer_a1_p_id)
+        del_result_b_nq = self.write_timer_helper_b.delete(self.timer_q1_p_id)
+        timer_a1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_a1_p_id).exists()
+        timer_b1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_b1_p_id).exists()
+        timer_q1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_q1_p_id).exists()
+        # Assertions
+        self.assertFalse(del_result_b_na, 
+                         'User B must fail to delete User A\'s Timer')
+        self.assertFalse(del_result_b_nq,
+                         'User B must fail to delete QL User\'s Timer')
+        self.assertTrue(timer_a1_p_exists, 'Timer A1 must remain in database')
+        self.assertTrue(timer_b1_p_exists, 'Timer B1 must remain in database')
+        self.assertTrue(timer_q1_p_exists, 'Timer Q1 must remain in database')
+
+    def test_delete_wrong_user_q(self):
+        del_result_q_na = self.write_timer_helper_q.delete(self.timer_a1_p_id)
+        del_result_q_nb = self.write_timer_helper_q.delete(self.timer_b1_p_id)
+        timer_a1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_a1_p_id).exists()
+        timer_b1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_b1_p_id).exists()
+        timer_q1_p_exists = PADSTimer.objects.filter(
+                pk=self.timer_q1_p_id).exists()
+        # Assertions
+        self.assertFalse(del_result_q_na, 
+                         'QL User must fail to delete User A\'s Timer')
+        self.assertFalse(del_result_q_nb,
+                         'QL User must fail to delete User B\'s Timer')
+        self.assertTrue(timer_a1_p_exists, 'Timer A1 must remain in database')
+        self.assertTrue(timer_b1_p_exists, 'Timer B1 must remain in database')
+        self.assertTrue(timer_q1_p_exists, 'Timer Q1 must remain in database')
+        
+        
 class PADSWriteTimerHelperSetDescriptionTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -749,22 +922,218 @@ class PADSWriteTimerHelperSetDescriptionTests(TestCase):
 class PADSWriteTimerHelperResetByIdTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        raise NotImplementedError
-    
+        # Set up test Users and Timer Helpers
+        # Set Up Test Users and Write Timer Helpers
+        #  Test User A
+        username_a = 'test-jess-thrbi'
+        password_a = '       +-+-+-trewqTREWQ4321'
+        cls.user_a = write_user_helper.prepare_user_in_db(
+                username_a, password_a)
+        cls.user_a.save()
+        cls.write_timer_helper_a = PADSWriteTimerHelper(cls.user_a.id)
+        #  Test User B
+        username_b = 'not-jess'
+        password_b = password_a
+        cls.user_b = write_user_helper.prepare_user_in_db(
+                username_b, password_b)
+        cls.user_b.save()
+        cls.write_timer_helper_b = PADSWriteTimerHelper(cls.user_b.id)
+        # Test Quick List User
+        cls.user_q = write_user_helper.prepare_ql_user_in_db()[0]
+        cls.user_q.save()
+        cls.write_timer_helper_q = PADSWriteTimerHelper(cls.user_q.id)
+        
+        # Set Up Test Timers
+        #  Public Timers are used in this test to ensure that the Helpers
+        #  are able to tell between granting write and read access.
+        #  Test User A's Timer
+        timer_a1_p_desc = 'Test Timer A1 by Test User A (Public)'
+        cls.timer_a1_p_id = cls.write_timer_helper_a.new(
+                timer_a1_p_desc, public=True)
+        cls.timer_a1_p = PADSTimer.objects.get(pk=cls.timer_a1_p_id)
+        #  Test User B's Timer
+        timer_b1_p_desc = 'Test Timer B1 by Test User B (Public)'
+        cls.timer_b1_p_id = cls.write_timer_helper_b.new(
+                timer_b1_p_desc, public=True)
+        cls.timer_b1_p = PADSTimer.objects.get(pk=cls.timer_b1_p_id)
+        #  Test QL User's Timer
+        timer_q1_p_desc = 'Test Timer Q1 by Test QL User (Public)'
+        cls.timer_q1_p_id = cls.write_timer_helper_q.new(
+                timer_q1_p_desc, public=True)
+        cls.timer_q1_p = PADSTimer.objects.get(pk=cls.timer_q1_p_id)
+            
     def test_reset_by_id_valid_a(self):
-        raise NotImplementedError
+        reset_reason = 'Test User A Resetting Timer A1'
+        orig_count_time_a = self.timer_a1_p.count_from_date_time
+        orig_count_time_b = self.timer_b1_p.count_from_date_time
+        orig_count_time_q = self.timer_q1_p.count_from_date_time
+        timer_reset = self.write_timer_helper_a.reset_by_id(
+                self.timer_a1_p_id, reset_reason)
+        # Beginner's PROTIP: Timers must be reloaded after reset in order to
+        #  get the new count-from date times.
+        timer_a1_p_rel = PADSTimer.objects.get(pk=self.timer_a1_p_id)
+        count_time_a = timer_a1_p_rel.count_from_date_time
+        log_entry_a = PADSTimerReset.objects.filter(
+                timer_id=self.timer_a1_p_id).order_by('-date_time')[0]
+        timer_b1_p_rel = PADSTimer.objects.get(pk=self.timer_b1_p_id)
+        count_time_b = timer_b1_p_rel.count_from_date_time
+        timer_q1_p_rel = PADSTimer.objects.get(pk=self.timer_q1_p_id)
+        count_time_q = timer_q1_p_rel.count_from_date_time
+        # Assertions
+        self.assertTrue(timer_reset, 
+                        'Helper must indicate success resetting timer')
+        self.assertTrue(timer_a1_p_rel.running,
+                        'Timer A1 must be running after reset')
+        self.assertIn(reset_reason, log_entry_a.reason, 
+                      'Timer A1\'s reset must be logged')
+        self.assertTrue(count_time_a > orig_count_time_a,
+                  'Timer A1 count-from date time must be advanced after reset')
+        self.assertEquals(count_time_b, orig_count_time_b,
+                          'Timer B1 count-from date time must remain the same')
+        self.assertEquals(count_time_q, orig_count_time_q,
+                          'Timer Q1 count-from date time must remain the same')
 
     def test_reset_by_id_valid_b(self):
-        raise NotImplementedError
+        reset_reason = 'Test User B Resetting Timer B1'
+        orig_count_time_b = self.timer_b1_p.count_from_date_time
+        orig_count_time_a = self.timer_a1_p.count_from_date_time
+        orig_count_time_q = self.timer_q1_p.count_from_date_time
+        timer_reset = self.write_timer_helper_b.reset_by_id(
+                self.timer_b1_p_id, reset_reason)
+        # Reload Timers
+        timer_b1_p_rel = PADSTimer.objects.get(pk=self.timer_b1_p_id)
+        count_time_b = timer_b1_p_rel.count_from_date_time
+        log_entry_b = PADSTimerReset.objects.filter(
+                timer_id=self.timer_b1_p_id).order_by('-date_time')[0]
+        timer_a1_p_rel = PADSTimer.objects.get(pk=self.timer_a1_p_id)
+        count_time_a = timer_a1_p_rel.count_from_date_time
+        timer_q1_p_rel = PADSTimer.objects.get(pk=self.timer_q1_p_id)
+        count_time_q = timer_q1_p_rel.count_from_date_time
+        # Assertions
+        self.assertTrue(timer_reset,
+                        'Helper must indicate success resetting timer')
+        self.assertTrue(timer_b1_p_rel.running,
+                        'Timer B1 must be running after reset')
+        self.assertIn(reset_reason, log_entry_b.reason, 
+                      'Timer B1\'s reset must be logged')
+        self.assertTrue(count_time_b > orig_count_time_b,
+                  'Timer B1 count-from date time must be advanced after reset')
+        self.assertEquals(count_time_a, orig_count_time_a,
+                          'Timer A1 count-from date time must remain the same')
+        self.assertEquals(count_time_q, orig_count_time_q,
+                          'Timer Q1 count-from date time must remain the same')
+        
+    def test_reset_by_id_wrong_user_q(self):
+        reset_reason = 'Test User Q Resetting Timer A1'
+        orig_count_time_a = self.timer_a1_p.count_from_date_time
+        orig_count_time_b = self.timer_b1_p.count_from_date_time
+        orig_count_time_q = self.timer_q1_p.count_from_date_time
+        timer_reset = self.write_timer_helper_q.reset_by_id(
+                self.timer_a1_p_id, reset_reason)
+        # Reload Timers
+        timer_a1_p_rel = PADSTimer.objects.get(pk=self.timer_a1_p_id)
+        count_time_a = timer_a1_p_rel.count_from_date_time
+        timer_b1_p_rel = PADSTimer.objects.get(pk=self.timer_b1_p_id)
+        count_time_b = timer_b1_p_rel.count_from_date_time
+        timer_q1_p_rel = PADSTimer.objects.get(pk=self.timer_q1_p_id)
+        count_time_q = timer_q1_p_rel.count_from_date_time
+        log_entry_count = PADSTimerReset.objects.filter(
+                reason__icontains=reset_reason).count()
+        # Assertions
+        self.assertFalse(timer_reset,
+                  'Helper must indicate failure to reset other Users\' Timers')
+        self.assertEquals(count_time_a, orig_count_time_a,
+                          'Timer A1 count-from date time must remain the same')
+        self.assertEquals(count_time_b, orig_count_time_b,
+                          'Timer B1 count-from date time must remain the same')
+        self.assertEquals(count_time_q, orig_count_time_q,
+                          'Timer Q1 count-from date time must remain the same')
+        self.assertEquals(log_entry_count, 0,
+                          'Failed Timer reset must not be logged')
     
     def test_reset_by_id_signed_out(self):
-        raise NotImplementedError
+        write_timer_helper = PADSWriteTimerHelper()
+        reset_reason = 'Signed Out User Resetting Timer A1'
+        orig_count_time_a = self.timer_a1_p.count_from_date_time
+        orig_count_time_b = self.timer_b1_p.count_from_date_time
+        orig_count_time_q = self.timer_q1_p.count_from_date_time
+        timer_reset = write_timer_helper.reset_by_id(
+                self.timer_a1_p_id, reset_reason)
+        # Reload Timers
+        timer_a1_p_rel = PADSTimer.objects.get(pk=self.timer_a1_p_id)
+        count_time_a = timer_a1_p_rel.count_from_date_time
+        timer_b1_p_rel = PADSTimer.objects.get(pk=self.timer_b1_p_id)
+        count_time_b = timer_b1_p_rel.count_from_date_time
+        timer_q1_p_rel = PADSTimer.objects.get(pk=self.timer_q1_p_id)
+        count_time_q = timer_q1_p_rel.count_from_date_time
+        log_entry_count = PADSTimerReset.objects.filter(
+                reason__icontains=reset_reason).count()
+        # Assertions
+        self.assertFalse(timer_reset,
+                        'Helper must indicate failure to reset Timer')
+        self.assertEquals(count_time_a, orig_count_time_a,
+                          'Timer A1 count-from date time must remain the same')
+        self.assertEquals(count_time_b, orig_count_time_b,
+                          'Timer B1 count-from date time must remain the same')
+        self.assertEquals(count_time_q, orig_count_time_q,
+                          'Timer Q1 count-from date time must remain the same')
+        self.assertEquals(log_entry_count, 0,
+                        'Failed Timer reset must not be logged')
 
     def test_reset_by_id_bad_reason_a(self):
-        raise NotImplementedError
+        orig_count_time_a = self.timer_a1_p.count_from_date_time
+        orig_count_time_b = self.timer_b1_p.count_from_date_time
+        orig_count_time_q = self.timer_q1_p.count_from_date_time
+        # First-stage Assertions
+        for i in bad_str_inputs.values():
+            timer_reset = self.write_timer_helper_a.reset_by_id(
+                    self.timer_a1_p_id, i)
+            self.assertFalse(timer_reset,
+                 'Helper must indicate failed Timer reset with invalid reason')
+        # Reload Timers
+        timer_a1_p_rel = PADSTimer.objects.get(pk=self.timer_a1_p_id)
+        count_time_a = timer_a1_p_rel.count_from_date_time
+        timer_b1_p_rel = PADSTimer.objects.get(pk=self.timer_b1_p_id)
+        count_time_b = timer_b1_p_rel.count_from_date_time
+        timer_q1_p_rel = PADSTimer.objects.get(pk=self.timer_q1_p_id)
+        count_time_q = timer_q1_p_rel.count_from_date_time
+        # Second-stage Assertions
+        self.assertEquals(count_time_a, orig_count_time_a,
+                          'Timer A1 count-from date time must remain the same')
+        self.assertEquals(count_time_b, orig_count_time_b,
+                          'Timer B1 count-from date time must remain the same')
+        self.assertEquals(count_time_q, orig_count_time_q,
+                          'Timer Q1 count-from date time must remain the same')
 
     def test_reset_by_id_invalid_id(self):
-        raise NotImplementedError
+        orig_count_time_a = self.timer_a1_p.count_from_date_time
+        orig_count_time_b = self.timer_b1_p.count_from_date_time
+        orig_count_time_q = self.timer_q1_p.count_from_date_time
+        reset_reason = 'Test User A resetting non-existent Timer'
+        # First-stage Assertions
+        for i in bad_str_inputs.values():
+            timer_reset = self.write_timer_helper_a.reset_by_id(
+                    i, reset_reason)
+            self.assertFalse(timer_reset,
+                     'Helper must indicate failed reset with invalid Timer id')
+        # Reload Timers
+        timer_a1_p_rel = PADSTimer.objects.get(pk=self.timer_a1_p_id)
+        count_time_a = timer_a1_p_rel.count_from_date_time
+        timer_b1_p_rel = PADSTimer.objects.get(pk=self.timer_b1_p_id)
+        count_time_b = timer_b1_p_rel.count_from_date_time
+        timer_q1_p_rel = PADSTimer.objects.get(pk=self.timer_q1_p_id)
+        count_time_q = timer_q1_p_rel.count_from_date_time
+        log_entry_count = PADSTimerReset.objects.filter(
+                reason__icontains=reset_reason).count()
+        # Second-stage Assertions
+        self.assertEquals(count_time_a, orig_count_time_a,
+                          'Timer A1 count-from date time must remain the same')
+        self.assertEquals(count_time_b, orig_count_time_b,
+                          'Timer B1 count-from date time must remain the same')
+        self.assertEquals(count_time_q, orig_count_time_q,
+                          'Timer Q1 count-from date time must remain the same')
+        self.assertEquals(log_entry_count, 0,
+                        'Failed Timer resets must not be logged')
 
 class PADSWriteTimerHelperStopByIdTests(TestCase):
     @classmethod
