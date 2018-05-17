@@ -255,8 +255,7 @@ class PADSWriteTimerHelper(PADSWriteHelper):
         if self.user_is_registered() is False:
             return None
         else:
-            timer_exists = self.timer_model.objects.filter(
-                    pk=timer_id).exists()
+            timer_exists = self.user_timers.filter(pk=timer_id).exists()
             if timer_exists is True:
                 log_time = timezone.now()
                 new_log_entry = PADSTimerReset()
