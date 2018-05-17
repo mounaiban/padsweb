@@ -309,11 +309,9 @@ class PADSWriteTimerHelper(PADSWriteHelper):
         else:
             # Restrict access of Timers to those created by assigned User
             # of matching id
-            timers_available = self.timer_model.objects.filter(
-                    creator_user_id=self.user_id) 
-            timer_exists = timers_available.filter(pk=timer_id).exists()
+            timer_exists = self.user_timers.filter(pk=timer_id).exists()
             if timer_exists is True:
-                timer = timers_available.get(pk=timer_id)
+                timer = self.user_timers.get(pk=timer_id)
                 timer.delete()
                 return True
             else:
@@ -421,12 +419,25 @@ class PADSWriteTimerHelper(PADSWriteHelper):
         new_timer.public = public
         new_timer.running = running
         return new_timer
-
+    
+    def set_user_access(self):
+        if self.user_is_present() is True:
+            self.user_timers = self.timer_model.objects.filter(
+                    creator_user_id=self.user_id)
+            self.user_timer_groups = self.group_model.objects.filter(
+                    creator_user_id=self.user_id)
+        else:
+            self.user_timers = None
+            self.user_timer_groups = None
 
     #
     # Introspection and Constructor Methods
     #
     def __init__(self, user_id=None, **kwargs):
+        # Set Instance Variables
+        self.user_timers = None
+        self.user_timer_groups = None
+        
         super().__init__(user_id, **kwargs)
 
         # Set Models
@@ -437,7 +448,8 @@ class PADSWriteTimerHelper(PADSWriteHelper):
                 'group_incl_model', GroupInclusion)
         self.timer_log_model = self.models.get('timer_log_model', 
                                                PADSTimerReset)
-
+        
+        self.set_user_access()
         
 class PADSUserHelper(PADSHelper):
     """Helper class for looking up information on User accounts and password
