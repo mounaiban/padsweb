@@ -340,30 +340,34 @@ class PADSWriteTimerHelper(PADSWriteHelper):
     def reset_by_id(self, timer_id, reason):
         reset_time = timezone.now()
         if self.user_is_registered() is False:
-            return False        
-        else:
-            timer_exists = self.timer_model.objects.filter(
-                    pk=timer_id).exists()
+            return False
+        if self.user_is_present() is False:
+            return False
+        if isinstance(reason, str) is False:
+            return False
+        elif reason.isspace() is True:
+            return False
+        elif (len(reason) <= 0):
+            return False
+        if isinstance(timer_id, int) is True:
+            timer_exists = self.user_timers.filter(pk=timer_id).exists()
 
             if timer_exists is False:
                 return False
             else:
-                timer = self.timer_model.objects.get(pk=timer_id)
-                timer_historical = timer.historical
-            
-            if timer_historical is False:
-                with transaction.atomic():
+                timer = self.user_timers.get(pk=timer_id)            
+                if timer.historical is False:
+                    with transaction.atomic():
                         timer.count_from_date_time = reset_time
                         timer.running = True
                         # Log the reset
-                        notice = labels['TIMER_RESET_NOTICE'].format(
-                                reason)
+                        notice = labels['TIMER_RESET_NOTICE'].format(reason)
                         self.new_log_entry(timer_id, notice)
                         timer.save()
-                        return True
-            else:
-                # Historical Timers shall not be reset 
-                return False
+                    return True
+                else:
+                    # Historical Timers shall not be reset 
+                    return False
         
     def stop_by_id(self, timer_id, reason):
         if self.user_is_registered() is False:
