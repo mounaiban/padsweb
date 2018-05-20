@@ -320,22 +320,37 @@ class PADSWriteTimerHelper(PADSWriteHelper):
         edit_time = timezone.now()
         if self.user_is_registered() is False:
             return False
+        elif isinstance(description, str) is False:
+            return False
+        elif description.isspace() is True:
+            return False
+        elif (len(description) <= 0) is True:
+            return False
         else:
-            with transaction.atomic():
-                timer_exists = self.timer_model.objects.filter(
-                        pk=timer_id).exists()
+            if isinstance(timer_id, int) is True:
+                timer_exists = self.user_timers.filter(pk=timer_id).exists()
                 if timer_exists is True:
-                    timer = self.timer_model.objects.get(pk=timer_id)
-                    timer.description = description
-                    timer.count_from_date_time = edit_time  # Reset timer
-                    # Log the change in description
-                    notice = labels['TIMER_RENAME_NOTICE'].format(
-                            description)
-                    self.new_log_entry(timer_id, notice)
-                    timer.save()
-                    return True
+                    timer = self.user_timers.get(pk=timer_id)
+                    if timer.historical is False:
+                        with transaction.atomic():
+                            timer.description = description
+                            if timer.running is True:
+                                # Reset timer if it is running
+                                timer.count_from_date_time = edit_time 
+                            # Log the change in description
+                            notice = labels['TIMER_RENAME_NOTICE'].format(
+                                    description)
+                            self.new_log_entry(timer_id, notice)
+                            timer.save()
+                            return True
+                    else:
+                        # Historical Timers must not have their description
+                        # changed
+                        return False
                 else:
                     return False
+            else:
+                return False
     
     def reset_by_id(self, timer_id, reason):
         reset_time = timezone.now()
