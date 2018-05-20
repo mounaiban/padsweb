@@ -902,23 +902,212 @@ class PADSWriteTimerHelperDeleteTests(TestCase):
 class PADSWriteTimerHelperSetDescriptionTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        raise NotImplementedError
+        # Set up test Users and Timer Helpers
+        # Set Up Test Users and Write Timer Helpers
+        #  Test User A
+        username_a = 'test-jess-sdt'
+        password_a = '       ;;;;;?????huhHUH1'
+        cls.user_a = write_user_helper.prepare_user_in_db(
+                username_a, password_a)
+        cls.user_a.save()
+        cls.write_timer_helper_a = PADSWriteTimerHelper(cls.user_a.id)
+        #  Test User B
+        username_b = 'not-jess'
+        password_b = password_a
+        cls.user_b = write_user_helper.prepare_user_in_db(
+                username_b, password_b)
+        cls.user_b.save()
+        cls.write_timer_helper_b = PADSWriteTimerHelper(cls.user_b.id)
+        # Test Quick List User
+        cls.user_q = write_user_helper.prepare_ql_user_in_db()[0]
+        cls.user_q.save()
+        cls.write_timer_helper_q = PADSWriteTimerHelper(cls.user_q.id)
+        
+        # Set Up Test Timers, remember original count-from date time.
+        #  Public Timers are used in this test to ensure that the Helpers
+        #  are able to tell between granting write and read access.
+        #  Test User A's Timer
+        cls.timer_a1_p_desc = 'Test Timer A1 by Test User A (Public)'
+        cls.timer_a1_p_id = cls.write_timer_helper_a.new(
+                cls.timer_a1_p_desc, public=True)
+        cls.timer_a1_p = PADSTimer.objects.get(pk=cls.timer_a1_p_id)
+        cls.orig_count_time_a1_p = cls.timer_a1_p.count_from_date_time
+        #  Test User B's Timer
+        cls.timer_b1_p_desc = 'Test Timer B1 by Test User B (Public)'
+        cls.timer_b1_p_id = cls.write_timer_helper_b.new(
+                cls.timer_b1_p_desc, public=True)
+        cls.timer_b1_p = PADSTimer.objects.get(pk=cls.timer_b1_p_id)
+        cls.orig_count_time_b1_p = cls.timer_b1_p.count_from_date_time
+        #  Test QL User's Timer
+        cls.timer_q1_p_desc = 'Test Timer Q1 by Test QL User (Public)'
+        cls.timer_q1_p_id = cls.write_timer_helper_q.new(
+                cls.timer_q1_p_desc, public=True)
+        cls.timer_q1_p = PADSTimer.objects.get(pk=cls.timer_q1_p_id)
+        cls.orig_count_time_q1_p = cls.timer_q1_p.count_from_date_time
     
+    def test_timers_descs_unchanged(self):
+        '''Returns True if the descriptions of all Test Timers in the 
+        Timer Write Helper Set Description Test Case have remained unchanged.
+        '''
+        # Beginner's PROTIP: Timers must be reloaded to ensure any changes
+        # that may have been made are accounted for
+        timer_rel_a1 = PADSTimer.objects.get(pk=self.timer_a1_p_id)
+        timer_a_desc_same = (self.timer_a1_p_desc == timer_rel_a1.description)
+        timer_rel_b1 = PADSTimer.objects.get(pk=self.timer_b1_p_id)
+        timer_b_desc_same = (self.timer_b1_p_desc == timer_rel_b1.description)
+        timer_rel_q1 = PADSTimer.objects.get(pk=self.timer_q1_p_id)
+        timer_q_desc_same = (self.timer_q1_p_desc == timer_rel_q1.description)
+        return (timer_a_desc_same & timer_b_desc_same & timer_q_desc_same)
+    
+    def test_timers_cfdts_unchanged(self):
+        '''Returns True if the count-from date times of all Test Timers in the 
+        Timer Write Helper Set Description Test Case have remained unchanged.
+        '''
+        timer_rel_a1 = PADSTimer.objects.get(pk=self.timer_a1_p_id)
+        timer_a_cfdt_same = (
+                self.orig_count_time_a1_p == timer_rel_a1.count_from_date_time)
+        timer_rel_b1 = PADSTimer.objects.get(pk=self.timer_b1_p_id)
+        timer_b_cfdt_same = (
+             self.orig_count_time_b1_p == timer_rel_b1.count_from_date_time)
+        timer_rel_q1 = PADSTimer.objects.get(pk=self.timer_q1_p_id)
+        timer_q_cfdt_same = (
+             self.orig_count_time_q1_p == timer_rel_q1.count_from_date_time)
+        return (timer_a_cfdt_same & timer_b_cfdt_same & timer_q_cfdt_same)
+        
     def test_set_description_valid_a(self):
-        raise NotImplementedError
-
-    def test_set_description_valid_b(self):
-        raise NotImplementedError
+        new_desc_a1 = 'New Timer Description A1'
+        desc_changed = self.write_timer_helper_a.set_description(
+                self.timer_a1_p_id, new_desc_a1)
+        ref_timestamp = timezone.now().timestamp()
+        timer_rel = PADSTimer.objects.get(pk=self.timer_a1_p_id)
+        # Assertions
+        self.assertEquals(timer_rel.description, new_desc_a1, 
+                          'User A\'s Timer description must be changed')
+        self.assertTrue(desc_changed, 
+                  'Timer helper must indicate success in changing description')
+        self.assertAlmostEquals(timer_rel.count_from_date_time.timestamp(), 
+                                ref_timestamp, 
+                                delta=1.0,
+                                msg='Changing description must reset Timer')
+        self.assertEquals(self.timer_b1_p.description, self.timer_b1_p_desc,
+                      'User B\'s Timer description must remain unchanged.')
+        self.assertEquals(self.timer_b1_p.count_from_date_time, 
+              self.orig_count_time_b1_p,
+              'User B\'s Timer count-from date time must remain unchanged')
+        self.assertEquals(self.timer_q1_p.description, self.timer_q1_p_desc,
+                   'QL User\'s Timer description must remain unchanged.')
+        self.assertEquals(self.timer_q1_p.count_from_date_time, 
+              self.orig_count_time_q1_p,
+              'QL User\'s Timer count-from date time must remain unchanged')
+            
+    def test_set_description_valid_q(self):
+        new_desc_q1 = 'New Timer Description Q1'
+        desc_changed = self.write_timer_helper_q.set_description(
+                self.timer_q1_p_id, new_desc_q1)
+        ref_timestamp = timezone.now().timestamp()
+        timer_rel = PADSTimer.objects.get(pk=self.timer_q1_p_id)
+        # Assertions
+        self.assertEquals(timer_rel.description, new_desc_q1, 
+                          'QL User\'s Timer description must be changed')
+        self.assertTrue(desc_changed,
+                  'Timer helper must indicate success in changing description')
+        self.assertAlmostEquals(timer_rel.count_from_date_time.timestamp(),
+                            ref_timestamp,
+                            delta=1.0,
+                            msg='Description change must reset Timer')
+        self.assertEquals(self.timer_a1_p.description, self.timer_a1_p_desc,
+                         'User A\'s Timer\'s description must remain the same')
+        self.assertEquals(self.timer_a1_p.count_from_date_time, 
+                  self.orig_count_time_a1_p,
+                  'User A\'s Timer\'s count-from date time must be unchanged')
+        self.assertEquals(self.timer_b1_p.description, self.timer_b1_p_desc,
+                      'User B\'s Timer Description must remain the same')
+        self.assertEquals(self.timer_b1_p.count_from_date_time, 
+                  self.orig_count_time_b1_p,
+                  'User B\'s Timer count-from date time must remain the same')
+        
+    def test_set_description_valid_stopped_b(self):
+        # Set up a Historical Timer for Test User A
+        timer_b2_pnr_desc = 'Test Timer B2 by Test User A (Public/Stopped)'
+        timer_b2_pnr_id= self.write_timer_helper_a.new(
+                timer_b2_pnr_desc, public=True, running=False)
+        timer_b2_pnr = PADSTimer.objects.get(pk=timer_b2_pnr_id)
+        orig_count_time_b2_pnr = timer_b2_pnr.count_from_date_time
+        # Attempt to change Historical Timer's description
+        new_desc_b2_pnr = 'Test Timer B2 New Description'
+        desc_changed = self.write_timer_helper_a.set_description(
+                timer_b2_pnr_id, new_desc_b2_pnr)
+        timer_b2_pnr_rel = PADSTimer.objects.get(pk=timer_b2_pnr_id) # Reload
+        # Assertions
+        self.assertTrue(desc_changed)
+        self.assertFalse(timer_b2_pnr.running)
+        self.assertEquals(timer_b2_pnr_desc, timer_b2_pnr.description)
+        self.assertEquals(orig_count_time_b2_pnr, 
+                          timer_b2_pnr_rel.count_from_date_time)
     
-    def test_set_description_signed_out(self):
-        raise NotImplementedError
-
     def test_set_description_bad_description(self):
-        raise NotImplementedError
-    
-    def test_set_description_wrong_user_a(self):
-        raise NotImplementedError
+        # Multi-Assertion
+        for i in bad_str_inputs.values():
+            desc_changed = self.write_timer_helper_a.set_description(
+                    self.timer_q1_p_id, i)
+            self.assertFalse(desc_changed,
+                 'Timer helper must indicate failure to set a bad description')
+            self.assertTrue(self.test_timers_cfdts_unchanged(),
+                       'Descriptions of all Test Timers must remain unchanged')
+            self.assertTrue(self.test_timers_descs_unchanged(),
+                    'Count-from date times of all Test Timers must not change')
+        
+    def test_set_description_historical(self):
+        # Set up a Historical Timer for Test User A
+        timer_a2_ph_desc = 'Test Timer A2 by Test User A (Public/Historical)'
+        timer_a2_ph_id= self.write_timer_helper_a.new(
+                timer_a2_ph_desc, public=True, historical=True)
+        timer_a2_ph = PADSTimer.objects.get(pk=timer_a2_ph_id)
+        orig_count_time_a2_ph = timer_a2_ph.count_from_date_time
+        # Attempt to change Historical Timer's description
+        new_desc_a2_ph = 'Test User A editing own historical Timer'
+        desc_changed = self.write_timer_helper_a.set_description(
+                timer_a2_ph_id, new_desc_a2_ph)
+        # Assertions
+        self.assertFalse(desc_changed)
+        self.assertEqual(timer_a2_ph.description, timer_a2_ph_desc)
+        self.assertEqual(timer_a2_ph.count_from_date_time, 
+                         orig_count_time_a2_ph)
 
+    def test_set_description_invalid_id(self):
+        new_desc_b1_a = 'User A attempting to modify non-existent Timer'
+        desc_changed = self.write_timer_helper_a.set_description(
+                -9999, new_desc_b1_a)
+        self.assertFalse(desc_changed, 
+                    'Timer helper must indicate failure to change description')
+        self.assertTrue(self.test_timers_cfdts_unchanged(),
+                   'Descriptions of all Test Timers must remain unchanged')
+        self.assertTrue(self.test_timers_descs_unchanged(),
+                'Count-from date times of all Test Timers must not change')
+
+    def test_set_description_signed_out(self):
+        write_timer_helper = PADSWriteTimerHelper()
+        new_desc_a1_s = 'Signed out User attempting to modify User A\'s Timer'
+        desc_changed = write_timer_helper.set_description(
+                self.timer_a1_p_id, new_desc_a1_s)
+        self.assertFalse(desc_changed, 
+                    'Timer helper must indicate failure to change description')
+        self.assertTrue(self.test_timers_cfdts_unchanged(),
+                   'Descriptions of all Test Timers must remain unchanged')
+        self.assertTrue(self.test_timers_descs_unchanged(),
+                'Count-from date times of all Test Timers must not change')
+            
+    def test_set_description_wrong_user_a(self):
+        new_desc_b1_a = 'User A attempting to modify User B\'s Timer'
+        desc_changed = self.write_timer_helper_a.set_description(
+                self.timer_b1_p_id, new_desc_b1_a)
+        self.assertFalse(desc_changed, 
+                    'Timer helper must indicate failure to change description')
+        self.assertTrue(self.test_timers_cfdts_unchanged(),
+                   'Descriptions of all Test Timers must remain unchanged')
+        self.assertTrue(self.test_timers_descs_unchanged(),
+                'Count-from date times of all Test Timers must not change')
+        
 class PADSWriteTimerHelperResetByIdTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -979,6 +1168,7 @@ class PADSWriteTimerHelperResetByIdTests(TestCase):
         count_time_b = timer_b1_p_rel.count_from_date_time
         timer_q1_p_rel = PADSTimer.objects.get(pk=self.timer_q1_p_id)
         count_time_q = timer_q1_p_rel.count_from_date_time
+        ref_timestamp = timezone.now().timestamp()
         # Assertions
         self.assertTrue(timer_reset, 
                         'Helper must indicate success resetting timer')
@@ -986,8 +1176,10 @@ class PADSWriteTimerHelperResetByIdTests(TestCase):
                         'Timer A1 must be running after reset')
         self.assertIn(reset_reason, log_entry_a.reason, 
                       'Timer A1\'s reset must be logged')
-        self.assertTrue(count_time_a > self.orig_count_time_a1_p,
-                  'Timer A1 count-from date time must be advanced after reset')
+        self.assertAlmostEqual(count_time_a.timestamp(),
+               ref_timestamp, 
+               delta=1.0,
+              msg='Timer A1 count-from date time must be advanced after reset')
         self.assertEquals(count_time_b, self.orig_count_time_b1_p,
                           'Timer B1 count-from date time must remain the same')
         self.assertEquals(count_time_q, self.orig_count_time_q1_p,
@@ -1006,6 +1198,7 @@ class PADSWriteTimerHelperResetByIdTests(TestCase):
         count_time_a = timer_a1_p_rel.count_from_date_time
         timer_q1_p_rel = PADSTimer.objects.get(pk=self.timer_q1_p_id)
         count_time_q = timer_q1_p_rel.count_from_date_time
+        ref_timestamp = timezone.now().timestamp()
         # Assertions
         self.assertTrue(timer_reset,
                         'Helper must indicate success resetting timer')
@@ -1013,8 +1206,10 @@ class PADSWriteTimerHelperResetByIdTests(TestCase):
                         'Timer B1 must be running after reset')
         self.assertIn(reset_reason, log_entry_b.reason, 
                       'Timer B1\'s reset must be logged')
-        self.assertTrue(count_time_b > self.orig_count_time_b1_p,
-                  'Timer B1 count-from date time must be advanced after reset')
+        self.assertAlmostEqual(count_time_b.timestamp(),
+               ref_timestamp,
+               delta=1.0,
+              msg='Timer B1 count-from date time must be advanced after reset')
         self.assertEquals(count_time_a, self.orig_count_time_a1_p,
                           'Timer A1 count-from date time must remain the same')
         self.assertEquals(count_time_q, self.orig_count_time_q1_p,
