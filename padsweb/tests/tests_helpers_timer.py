@@ -1272,7 +1272,23 @@ class PADSWriteTimerHelperResetByIdTests(TestCase):
                     'Count-from date times of all Test Timers must not change')
     
     def test_reset_by_id_historical(self):
-        raise NotImplementedError
+        timer_q2_ph_desc = 'Test Timer Q2 by QL User (Pub/Historical)'
+        reset_reason = 'Test QL User attempting to reset historical Timer'
+        timer_q2_id = self.write_timer_helper_q.new(
+                timer_q2_ph_desc, historical=True)
+        timer_q2 = PADSTimer.objects.get(pk=timer_q2_id)
+        timer_reset = self.write_timer_helper_q.reset_by_id(
+                timer_q2_id, reset_reason)
+        orig_count_time_q2 = timer_q2.count_from_date_time
+        timer_q2_rel = PADSTimer.objects.get(pk=timer_q2_id) # Reload
+        log_entry_count = PADSTimerReset.objects.filter(
+                reason__icontains=reset_reason).count()
+        # Assertions
+        self.assertFalse(timer_reset)
+        self.assertEquals(timer_q2_rel.count_from_date_time,
+                          orig_count_time_q2)
+        self.assertEquals(log_entry_count, 0,
+                        'Failed Timer resets must not be logged')
 
     def test_reset_by_id_invalid_id(self):
         reset_reason = 'Test User A resetting non-existent Timer'
