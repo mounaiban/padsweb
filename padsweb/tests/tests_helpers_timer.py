@@ -1153,7 +1153,23 @@ class PADSWriteTimerHelperResetByIdTests(TestCase):
                 timer_q1_p_desc, public=True)
         cls.timer_q1_p = PADSTimer.objects.get(pk=cls.timer_q1_p_id)
         cls.orig_count_time_q1_p = cls.timer_q1_p.count_from_date_time
-            
+    
+    def timers_cfdts_unchanged(self):
+        '''Returns True if the count-from date times of all Test Timers in the 
+        Timer Write Helper Set Description Test Case have remained unchanged.
+        '''
+        timer_rel_a1 = PADSTimer.objects.get(pk=self.timer_a1_p_id)
+        timer_a_cfdt_same = (
+                self.orig_count_time_a1_p == timer_rel_a1.count_from_date_time)
+        timer_rel_b1 = PADSTimer.objects.get(pk=self.timer_b1_p_id)
+        timer_b_cfdt_same = (
+             self.orig_count_time_b1_p == timer_rel_b1.count_from_date_time)
+        timer_rel_q1 = PADSTimer.objects.get(pk=self.timer_q1_p_id)
+        timer_q_cfdt_same = (
+             self.orig_count_time_q1_p == timer_rel_q1.count_from_date_time)
+        return (timer_a_cfdt_same & timer_b_cfdt_same & timer_q_cfdt_same)
+
+    
     def test_reset_by_id_valid_a(self):
         reset_reason = 'Test User A Resetting Timer A1'
         timer_reset = self.write_timer_helper_a.reset_by_id(
@@ -1219,50 +1235,28 @@ class PADSWriteTimerHelperResetByIdTests(TestCase):
         reset_reason = 'Test User Q Resetting Timer A1'
         timer_reset = self.write_timer_helper_q.reset_by_id(
                 self.timer_a1_p_id, reset_reason)
-        # Reload Timers
-        timer_a1_p_rel = PADSTimer.objects.get(pk=self.timer_a1_p_id)
-        count_time_a = timer_a1_p_rel.count_from_date_time
-        timer_b1_p_rel = PADSTimer.objects.get(pk=self.timer_b1_p_id)
-        count_time_b = timer_b1_p_rel.count_from_date_time
-        timer_q1_p_rel = PADSTimer.objects.get(pk=self.timer_q1_p_id)
-        count_time_q = timer_q1_p_rel.count_from_date_time
         log_entry_count = PADSTimerReset.objects.filter(
                 reason__icontains=reset_reason).count()
         # Assertions
         self.assertFalse(timer_reset,
                   'Helper must indicate failure to reset other Users\' Timers')
-        self.assertEquals(count_time_a, self.orig_count_time_a1_p,
-                          'Timer A1 count-from date time must remain the same')
-        self.assertEquals(count_time_b, self.orig_count_time_b1_p,
-                          'Timer B1 count-from date time must remain the same')
-        self.assertEquals(count_time_q, self.orig_count_time_q1_p,
-                          'Timer Q1 count-from date time must remain the same')
+        self.assertTrue(self.timers_cfdts_unchanged(),
+                    'Count-from date times of all Test Timers must not change')
         self.assertEquals(log_entry_count, 0,
-                          'Failed Timer reset must not be logged')
-    
+                        'Failed Timer reset must not be logged')
+        
     def test_reset_by_id_signed_out(self):
         write_timer_helper = PADSWriteTimerHelper()
         reset_reason = 'Signed Out User Resetting Timer A1'
         timer_reset = write_timer_helper.reset_by_id(
                 self.timer_a1_p_id, reset_reason)
-        # Reload Timers
-        timer_a1_p_rel = PADSTimer.objects.get(pk=self.timer_a1_p_id)
-        count_time_a = timer_a1_p_rel.count_from_date_time
-        timer_b1_p_rel = PADSTimer.objects.get(pk=self.timer_b1_p_id)
-        count_time_b = timer_b1_p_rel.count_from_date_time
-        timer_q1_p_rel = PADSTimer.objects.get(pk=self.timer_q1_p_id)
-        count_time_q = timer_q1_p_rel.count_from_date_time
         log_entry_count = PADSTimerReset.objects.filter(
                 reason__icontains=reset_reason).count()
         # Assertions
         self.assertFalse(timer_reset,
                         'Helper must indicate failure to reset Timer')
-        self.assertEquals(count_time_a, self.orig_count_time_a1_p,
-                          'Timer A1 count-from date time must remain the same')
-        self.assertEquals(count_time_b, self.orig_count_time_b1_p,
-                          'Timer B1 count-from date time must remain the same')
-        self.assertEquals(count_time_q, self.orig_count_time_q1_p,
-                          'Timer Q1 count-from date time must remain the same')
+        self.assertTrue(self.timers_cfdts_unchanged(),
+                    'Count-from date times of all Test Timers must not change')
         self.assertEquals(log_entry_count, 0,
                         'Failed Timer reset must not be logged')
 
@@ -1273,20 +1267,12 @@ class PADSWriteTimerHelperResetByIdTests(TestCase):
                     self.timer_a1_p_id, i)
             self.assertFalse(timer_reset,
                  'Helper must indicate failed Timer reset with invalid reason')
-        # Reload Timers
-        timer_a1_p_rel = PADSTimer.objects.get(pk=self.timer_a1_p_id)
-        count_time_a = timer_a1_p_rel.count_from_date_time
-        timer_b1_p_rel = PADSTimer.objects.get(pk=self.timer_b1_p_id)
-        count_time_b = timer_b1_p_rel.count_from_date_time
-        timer_q1_p_rel = PADSTimer.objects.get(pk=self.timer_q1_p_id)
-        count_time_q = timer_q1_p_rel.count_from_date_time
         # Second-stage Assertions
-        self.assertEquals(count_time_a, self.orig_count_time_a1_p,
-                          'Timer A1 count-from date time must remain the same')
-        self.assertEquals(count_time_b, self.orig_count_time_b1_p,
-                          'Timer B1 count-from date time must remain the same')
-        self.assertEquals(count_time_q, self.orig_count_time_q1_p,
-                          'Timer Q1 count-from date time must remain the same')
+        self.assertTrue(self.timers_cfdts_unchanged(),
+                    'Count-from date times of all Test Timers must not change')
+    
+    def test_reset_by_id_historical(self):
+        raise NotImplementedError
 
     def test_reset_by_id_invalid_id(self):
         reset_reason = 'Test User A resetting non-existent Timer'
@@ -1296,22 +1282,11 @@ class PADSWriteTimerHelperResetByIdTests(TestCase):
                     i, reset_reason)
             self.assertFalse(timer_reset,
                      'Helper must indicate failed reset with invalid Timer id')
-        # Reload Timers
-        timer_a1_p_rel = PADSTimer.objects.get(pk=self.timer_a1_p_id)
-        count_time_a = timer_a1_p_rel.count_from_date_time
-        timer_b1_p_rel = PADSTimer.objects.get(pk=self.timer_b1_p_id)
-        count_time_b = timer_b1_p_rel.count_from_date_time
-        timer_q1_p_rel = PADSTimer.objects.get(pk=self.timer_q1_p_id)
-        count_time_q = timer_q1_p_rel.count_from_date_time
         log_entry_count = PADSTimerReset.objects.filter(
                 reason__icontains=reset_reason).count()
         # Second-stage Assertions
-        self.assertEquals(count_time_a, self.orig_count_time_a1_p,
-                          'Timer A1 count-from date time must remain the same')
-        self.assertEquals(count_time_b, self.orig_count_time_b1_p,
-                          'Timer B1 count-from date time must remain the same')
-        self.assertEquals(count_time_q, self.orig_count_time_q1_p,
-                          'Timer Q1 count-from date time must remain the same')
+        self.assertTrue(self.timers_cfdts_unchanged(),
+                    'Count-from date times of all Test Timers must not change')
         self.assertEquals(log_entry_count, 0,
                         'Failed Timer resets must not be logged')
 
