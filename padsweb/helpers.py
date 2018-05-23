@@ -385,17 +385,25 @@ class PADSWriteTimerHelper(PADSWriteHelper):
                     return False
         
     def stop_by_id(self, timer_id, reason):
+        stop_time = timezone.now()
         if self.user_is_registered() is False:
             return False        
+        if isinstance(reason, str) is False:
+            return False
+        elif reason.isspace() is True:
+            return False
+        elif (len(reason) <= 0):
+            return False
         else:
-            timer_exists = self.timer_model.objects.filter(
+            timer_exists = self.user_timers.filter(
                     pk=timer_id).exists()
 
         if timer_exists is False:
             return False
         else:
-            timer = self.timer_model.objects.get(pk=timer_id)
+            timer = self.user_timers.get(pk=timer_id)
             timer_historical = timer.historical
+            timer.count_from_date_time = stop_time # Stopping a timer resets it
             timer.running = False
         
             with transaction.atomic():
