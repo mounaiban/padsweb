@@ -36,6 +36,7 @@ bad_str_inputs = {
         'dict' : {},
         }
 
+
 #
 # Retrieval Helper Tests
 class PADSReadTimerHelperGetAllFromDbTests(TestCase):
@@ -1272,6 +1273,7 @@ class PADSWriteTimerHelperResetByIdTests(TestCase):
                     'Count-from date times of all Test Timers must not change')
     
     def test_reset_by_id_historical(self):
+        # Create new historical Timer for Test QL User
         timer_q2_ph_desc = 'Test Timer Q2 by QL User (Pub/Historical)'
         reset_reason = 'Test QL User attempting to reset historical Timer'
         timer_q2_id = self.write_timer_helper_q.new(
@@ -1309,4 +1311,196 @@ class PADSWriteTimerHelperResetByIdTests(TestCase):
 class PADSWriteTimerHelperStopByIdTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        raise NotImplementedError
+        # Set up test Users and Timer Helpers
+        # Set Up Test Users and Write Timer Helpers
+        #  Test User A
+        username_a = 'test-jess-thsbi'
+        password_a = '       ///?????huyyuhHYUUH534435'
+        cls.user_a = write_user_helper.prepare_user_in_db(
+                username_a, password_a)
+        cls.user_a.save()
+        cls.write_timer_helper_a = PADSWriteTimerHelper(cls.user_a.id)
+        #  Test User B
+        username_b = 'not-jess'
+        password_b = password_a
+        cls.user_b = write_user_helper.prepare_user_in_db(
+                username_b, password_b)
+        cls.user_b.save()
+        cls.write_timer_helper_b = PADSWriteTimerHelper(cls.user_b.id)
+        # Test Quick List User
+        cls.user_q = write_user_helper.prepare_ql_user_in_db()[0]
+        cls.user_q.save()
+        cls.write_timer_helper_q = PADSWriteTimerHelper(cls.user_q.id)
+        
+        # Set Up Test Timers, remember original count-from date time
+        #  Public Timers are used in this test to ensure that the Helpers
+        #  are able to tell between granting write and read access.
+        #  Test User A's Timer
+        timer_a1_p_desc = 'Test Timer A1 by Test User A (Public)'
+        cls.timer_a1_p_id = cls.write_timer_helper_a.new(
+                timer_a1_p_desc, public=True)
+        cls.timer_a1_p = PADSTimer.objects.get(pk=cls.timer_a1_p_id)
+        cls.orig_count_time_a1_p = cls.timer_a1_p.count_from_date_time
+        #  Test User B's Timer
+        timer_b1_p_desc = 'Test Timer B1 by Test User B (Public)'
+        cls.timer_b1_p_id = cls.write_timer_helper_b.new(
+                timer_b1_p_desc, public=True)
+        cls.timer_b1_p = PADSTimer.objects.get(pk=cls.timer_b1_p_id)
+        cls.orig_count_time_b1_p = cls.timer_b1_p.count_from_date_time
+        #  Test QL User's Timer
+        timer_q1_p_desc = 'Test Timer Q1 by Test QL User (Public)'
+        cls.timer_q1_p_id = cls.write_timer_helper_q.new(
+                timer_q1_p_desc, public=True)
+        cls.timer_q1_p = PADSTimer.objects.get(pk=cls.timer_q1_p_id)
+        cls.orig_count_time_q1_p = cls.timer_q1_p.count_from_date_time
+    
+    def timers_cfdts_unchanged(self):
+        '''Returns True if the count-from date times of all Test Timers in the 
+        Timer Write Helper Set Description Test Case have remained unchanged.
+        '''
+        timer_rel_a1 = PADSTimer.objects.get(pk=self.timer_a1_p_id)
+        timer_a_cfdt_same = (
+                self.orig_count_time_a1_p == timer_rel_a1.count_from_date_time)
+        timer_rel_b1 = PADSTimer.objects.get(pk=self.timer_b1_p_id)
+        timer_b_cfdt_same = (
+             self.orig_count_time_b1_p == timer_rel_b1.count_from_date_time)
+        timer_rel_q1 = PADSTimer.objects.get(pk=self.timer_q1_p_id)
+        timer_q_cfdt_same = (
+             self.orig_count_time_q1_p == timer_rel_q1.count_from_date_time)
+        return (timer_a_cfdt_same & timer_b_cfdt_same & timer_q_cfdt_same)
+            
+    def test_stop_by_id_valid_a(self):
+        reason = 'User A Stopping Timer A1'
+        timer_stopped = self.write_timer_helper_a.stop_by_id(
+                self.timer_a1_p_id, reason)
+        ref_timestamp = timezone.now().timestamp()
+        stop_logged = PADSTimerReset.objects.filter(
+                timer_id=self.timer_a1_p_id, reason__icontains=reason).exists()
+        timer_a1_p_rel = PADSTimer.objects.get(pk=self.timer_a1_p_id)
+        # Assertions
+        self.assertTrue(timer_stopped,
+                        'Helper must indicate success stopping timer')
+        self.assertFalse(timer_a1_p_rel.running, 'Timer must be stopped')
+        self.assertTrue(
+             timer_a1_p_rel.count_from_date_time > self.orig_count_time_a1_p,
+             'Timer count-from date time must have advanced')
+        self.assertAlmostEquals(
+                timer_a1_p_rel.count_from_date_time.timestamp(),
+                ref_timestamp,
+                delta=0.1,
+                msg='Timer count-from date time must be close to system time'
+                )
+        self.assertTrue(stop_logged, 'Successful timer stops must be logged')
+        self.assertEquals(self.timer_b1_p.count_from_date_time, 
+                  self.orig_count_time_b1_p,
+                  'Other User\'s (B) Timer count-from time must not change')
+        self.assertEquals(self.timer_q1_p.count_from_date_time, 
+                   self.orig_count_time_q1_p,
+                   'Other User\'s (QL) Timer count-from time must not change')
+    
+    def test_stop_by_id_valid_q(self):
+        reason = 'QL User Stopping Timer Q1'
+        timer_stopped = self.write_timer_helper_q.stop_by_id(
+                self.timer_q1_p_id, reason)
+        ref_timestamp = timezone.now().timestamp()
+        stop_logged = PADSTimerReset.objects.filter(
+                timer_id=self.timer_q1_p_id, reason__icontains=reason).exists()
+        timer_q1_p_rel = PADSTimer.objects.get(pk=self.timer_q1_p_id)
+        # Assertions
+        self.assertTrue(timer_stopped,
+                        'Helper must indicate success stopping Timer')
+        self.assertFalse(timer_q1_p_rel.running, 'Timer must not be running')
+        self.assertTrue(
+             timer_q1_p_rel.count_from_date_time > self.orig_count_time_q1_p,
+             'Timer count-from date time must have advanced')
+        self.assertAlmostEquals(
+             timer_q1_p_rel.count_from_date_time.timestamp(),
+             ref_timestamp,
+             delta=0.1,
+             msg= 'Timer\'s count-from date time must be close to system time'
+             )
+        self.assertTrue(stop_logged, 'Successful Timer stops must be logged')
+        self.assertEquals(self.timer_a1_p.count_from_date_time, 
+                     self.orig_count_time_a1_p,
+                     'Other User\'s (A) Timer count-from time must not change')
+        self.assertEquals(self.timer_b1_p.count_from_date_time, 
+                      self.orig_count_time_b1_p,
+                     'Other User\'s (B) Timer count-from time must not change')
+        
+    def test_stop_by_id_valid_historical_a(self):
+        # Create new historical Timer for Test QL User
+        timer_q2_ph_desc = 'Test Timer Q2 by QL User (Pub/Historical)'
+        reset_reason = 'Test QL User attempting to stop historical Timer'
+        timer_q2_ph_id = self.write_timer_helper_q.new(
+                timer_q2_ph_desc, historical=True)
+        timer_q2_ph = PADSTimer.objects.get(pk=timer_q2_ph_id)
+        # Stop test Timer
+        timer_stopped = self.write_timer_helper_q.stop_by_id(
+                timer_q2_ph_id, reset_reason)
+        orig_count_time_q2 = timer_q2_ph.count_from_date_time
+        timer_q2_rel = PADSTimer.objects.get(pk=timer_q2_ph_id) # Reload
+        stop_logged = PADSTimerReset.objects.filter(timer_id=timer_q2_ph_id, 
+                                reason__icontains=reset_reason).exists()
+        ref_timestamp = timezone.now().timestamp()
+        # Assertions
+        self.assertTrue(timer_stopped,
+                        'Helper must indicate success stopping Timer')
+        self.assertTrue(timer_q2_rel.count_from_date_time > orig_count_time_q2,
+                        'Timer count-from date time must have advanced')
+        self.assertAlmostEquals(timer_q2_ph.count_from_date_time.timestamp(), 
+                 ref_timestamp,
+                 delta=0.1,
+                 msg='Timer count-from date time must be close to system time')
+        self.assertTrue(stop_logged,
+                        'Successful stop of a Historical Timer must be logged')
+    
+    def test_stop_by_id_wrong_user_b(self):
+        reason = 'User B attempting to stop User A\'s Timer A1'
+        timer_stopped = self.write_timer_helper_b.stop_by_id(
+                self.timer_a1_p_id, reason)
+        stop_logged = PADSTimerReset.objects.filter(
+                timer_id=self.timer_a1_p_id, reason__icontains=reason)
+        # Assertions
+        self.assertFalse(timer_stopped,
+                         'Helper must indicate failure to stop timer')
+        self.assertTrue(self.timers_cfdts_unchanged(),
+                   'Count-from date time on test Timers must remain unchanged')
+        self.assertFalse(stop_logged,
+                         'Failed Timer stops must not be logged')
+    
+    def test_stop_by_id_signed_out(self):
+        reason = 'Signed out User attempting to stop QL User\'s Timer'
+        write_timer_helper = PADSWriteTimerHelper()
+        timer_stopped = write_timer_helper.stop_by_id(
+                self.timer_q1_p_id, reason)
+        stop_logged = PADSTimerReset.objects.filter(
+                timer_id=self.timer_a1_p_id, reason__icontains=reason).exists()
+        # Assertions
+        self.assertFalse(timer_stopped,
+                         'Helper must indicate failure to stop Timer')
+        self.assertTrue(self.timers_cfdts_unchanged(),
+                   'Count-from date time on test Timers must remain unchanged')
+        self.assertFalse(stop_logged,
+                         'Failed Timer stops must not be logged')
+    
+    def test_stop_by_id_bad_reason_a(self):
+        # First-stage Multi-assertion
+        for i in bad_str_inputs.values():
+            timer_stopped = self.write_timer_helper_a.stop_by_id(
+                    self.timer_a1_p_id, i)
+            self.assertFalse(timer_stopped)
+        # Second-stage Assertions
+        self.assertTrue(self.timers_cfdts_unchanged())
+    
+    def test_stop_by_id_invalid_id(self):
+        reason = 'User A attempting to reset non-existent Timer'
+        timer_stopped = self.write_timer_helper_a.stop_by_id(-9999, reason)
+        stop_logged = PADSTimerReset.objects.filter(
+                timer_id=self.timer_a1_p_id, reason__icontains=reason).exists()
+        # Assertions
+        self.assertFalse(timer_stopped,
+               'Timer helper must indicate failure to stop non-existent Timer')
+        self.assertTrue(self.timers_cfdts_unchanged(),
+                   'Count-from date time on test Timers must remain unchanged')
+        self.assertFalse(stop_logged,
+                         'Failed Timer stops must not be logged')
