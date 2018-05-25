@@ -235,8 +235,14 @@ class PADSWriteTimerHelper(PADSWriteHelper):
         """
         if self.user_is_registered() is False:
             return None
+        elif isinstance(name, str) is False:
+            return None
+        elif len(name) <= 0:
+            return None
+        elif name.isspace() is True:
+            return None
         else:
-            group_exists = self.group_model.objects.filter(name=name).exists()
+            group_exists = self.user_timer_groups.filter(name=name).exists()
             if group_exists is True:
                 return None
             else:
@@ -312,6 +318,21 @@ class PADSWriteTimerHelper(PADSWriteHelper):
             if timer_exists is True:
                 timer = self.user_timers.get(pk=timer_id)
                 timer.delete()
+                return True
+            else:
+                return False
+    
+    def delete_group_by_id(self, timer_group_id):
+        if self.user_is_registered() is False:
+            return False
+        elif isinstance(timer_group_id, int) is False:
+            return False
+        else:
+            timer_group_exists = self.user_timer_groups.filter(
+                    pk=timer_group_id).exists()
+            if timer_group_exists is True:
+                timer_group = self.user_timer_groups.get(pk=timer_group_id)
+                timer_group.delete()
                 return True
             else:
                 return False
