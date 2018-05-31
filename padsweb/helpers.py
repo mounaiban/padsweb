@@ -293,18 +293,26 @@ class PADSWriteTimerHelper(PADSWriteHelper):
     def remove_from_group(self, timer_id, group_id):
         if self.user_is_registered() is False:
             return False
+        if (isinstance(timer_id, int) & isinstance(group_id, int) ) is False:
+            return False
         else:
+            group_exists = self.user_timer_groups.filter(
+                    pk=group_id).exists()
+            # Note: any user can remove any timer from own groups
             timer_exists = self.timer_model.objects.filter(
                     pk=timer_id).exists()
-            group_exists = self.group_model.objects.filter(
-                    pk=group_id).exists()
-            if (timer_exists is True) & (group_exists is True):
-                group_inclusion = self.group_incl_model.objects.get(
-                        timer_id=timer_id, group_id=group_id)
-                group_inclusion.delete()
-                return True
-            else:
+            if timer_exists & group_exists is False:
                 return False
+            else:
+                group_incl_exists = self.group_incl_model.objects.filter(
+                        timer_id=timer_id, group_id=group_id).exists()
+                if group_incl_exists is True:
+                    group_incl= self.group_incl_model.objects.get(
+                            timer_id=timer_id, group_id=group_id)
+                    group_incl.delete()                    
+                    return True
+                else:
+                    return False
 
     def delete(self, timer_id):
         if self.user_is_registered() is False:
