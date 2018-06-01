@@ -9,7 +9,8 @@ from django.test import TestCase
 from django.utils import timezone
 from padsweb.helpers import PADSReadTimerHelper, PADSWriteTimerHelper
 from padsweb.helpers import PADSWriteUserHelper
-from padsweb.models import PADSTimer, PADSTimerReset
+from padsweb.models import GroupInclusion
+from padsweb.models import PADSTimer, PADSTimerGroup, PADSTimerReset 
 from padsweb.settings import defaults
 import time
 #
@@ -574,7 +575,7 @@ class PADSWriteTimerHelperNewTests(TestCase):
     def test_new_valid(self):
         timer_a_desc = 'Test Timer A by Test User A'
         timer_a_id = self.write_timer_helper_a.new(timer_a_desc)
-        # Assertions
+        #  Assertions
         timer_assert = PADSTimer.objects.get(pk=timer_a_id)
         self.assertEquals(timer_a_desc, timer_assert.description,
                       'Timer Description must be the same as declared by User')
@@ -685,27 +686,691 @@ class PADSWriteTimerHelperNewTests(TestCase):
 class PADSWriteTimerHelperNewLogEntryTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        raise NotImplementedError
+        # Set Up Test Users and Write Timer Helpers
+        #  Test User A
+        username_a = 'test-jess-nlet'
+        password_a = '       plusPLUS+1111111'
+        cls.user_a = write_user_helper.prepare_user_in_db(
+                username_a, password_a)
+        cls.user_a.save()
+        cls.write_timer_helper_a = PADSWriteTimerHelper(cls.user_a.id)
+        # Test Quick List User
+        cls.user_q = write_user_helper.prepare_ql_user_in_db()[0]
+        cls.user_q.save()
+        cls.write_timer_helper_q = PADSWriteTimerHelper(cls.user_q.id)
+        
+        # Set Up Test Timers
+        #  Test User A's Timer
+        timer_a1_p_desc = 'Test Timer A1 by Test User A (Public)'
+        cls.timer_a1_p_id = cls.write_timer_helper_a.new(
+                timer_a1_p_desc, public=True)
+        #  Test QL User's Timer
+        timer_q1_p_desc = 'Test Timer Q1 by Test QL User (Public)'
+        cls.timer_q1_p_id = cls.write_timer_helper_q.new(
+                timer_q1_p_desc, public=True)
+    
+    def test_new_log_entry_valid_a(self):
+        reason = 'Event for Test Timer A1'
+        entry_id = self.write_timer_helper_a.new_log_entry(
+                self.timer_a1_p_id, reason)
+        entry_created = PADSTimerReset.objects.filter(
+                timer_id=self.timer_a1_p_id, reason=reason).exists()
+        # Assertions
+        self.assertTrue(entry_created)
+        self.assertIsNotNone(entry_id)
+    
+    def test_new_log_entry_valid_q(self):
+        reason = 'Event for Test Timer Q1'
+        entry_id = self.write_timer_helper_q.new_log_entry(
+                self.timer_q1_p_id, reason)
+        entry_created = PADSTimerReset.objects.filter(
+                timer_id=self.timer_q1_p_id, reason=reason).exists()
+        # Assertions
+        self.assertTrue(entry_created)
+        self.assertIsNotNone(entry_id)
+
+    def test_new_log_entry_wrong_user_a(self):
+        reason = 'Attempt by User A to add log entry to Timer Q1'
+        entry_id = self.write_timer_helper_a.new_log_entry(
+                self.timer_q1_p_id, reason)
+        entry_created = PADSTimerReset.objects.filter(
+                timer_id=self.timer_q1_p_id, reason=reason).exists()
+        # Assertions
+        self.assertFalse(entry_created)
+        self.assertIsNone(entry_id)
+
+    def test_new_log_entry_wrong_user_q(self):
+        reason = 'Attempt by QL User to add log entry to Timer A1'
+        entry_id = self.write_timer_helper_q.new_log_entry(
+                self.timer_a1_p_id, reason)
+        entry_created = PADSTimerReset.objects.filter(
+                timer_id=self.timer_a1_p_id, reason=reason).exists()
+        # Assertions
+        self.assertFalse(entry_created)
+        self.assertIsNone(entry_id)
+
+    def test_new_log_entry_bad_description_a(self):
+        # Multi-assertion
+        for i in bad_str_inputs.values():
+            entry_id = self.write_timer_helper_a.new_log_entry(
+                    self.timer_a1_p_id, i)
+            entry_created = PADSTimerReset.objects.filter(
+                    timer_id=self.timer_a1_p_id, reason=i).exists()
+            self.assertFalse(entry_created)
+            self.assertIsNone(entry_id)
+            
+    def test_new_log_entry_bad_description_q(self):
+        # Multi-assertion
+        for i in bad_str_inputs.values():
+            entry_id = self.write_timer_helper_q.new_log_entry(
+                    self.timer_q1_p_id, i)
+            entry_created = PADSTimerReset.objects.filter(
+                    timer_id=self.timer_q1_p_id, reason=i).exists()
+            self.assertFalse(entry_created)
+            self.assertIsNone(entry_id)
+
+    def test_new_log_entry_invalid_id_a(self):
+        reason = 'Attempt by Test User to add log event to non-existing Timer'
+        entry_id = self.write_timer_helper_a.new_log_entry(
+            -9999, reason)
+        entry_created = PADSTimerReset.objects.filter(reason=reason).exists()
+        # Assertions
+        self.assertFalse(entry_created)
+        self.assertIsNone(entry_id)
+        
+    def test_new_log_entry_signed_out(self):
+        write_timer_helper = PADSWriteTimerHelper()
+        reason = 'Attempt by Test User to add log event to non-existing Timer'
+        entry_id = write_timer_helper.new_log_entry(self.timer_a1_p_id, reason)
+        entry_created = PADSTimerReset.objects.filter(reason=reason).exists()
+        # Assertions
+        self.assertFalse(entry_created)
+        self.assertIsNone(entry_id)
+        
+class PADSWriteTimerHelperNewGroupTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # Set Up Test Users and Write Timer Helpers
+        #  Test User A
+        username_a = 'test-jess-thng'
+        password_a = '       <>^v<>^vwazsWAZS42684268'
+        cls.user_a = write_user_helper.prepare_user_in_db(
+                username_a, password_a)
+        cls.user_a.save()
+        cls.write_timer_helper_a = PADSWriteTimerHelper(cls.user_a.id)
+        # Test Quick List User
+        cls.user_q = write_user_helper.prepare_ql_user_in_db()[0]
+        cls.user_q.save()
+        cls.write_timer_helper_q = PADSWriteTimerHelper(cls.user_q.id)
+    
+    def test_new_group_valid_a(self):
+        group_name= 'test_group_ga1_user_a'
+        group_ga1_id = self.write_timer_helper_a.new_group(group_name)
+        group_ga1 = PADSTimerGroup.objects.get(pk=group_ga1_id) # ga1, not gaL
+        # Assertions
+        self.assertIsNotNone(group_ga1_id)
+        self.assertEquals(group_ga1.name, group_name)
+        self.assertEquals(group_ga1.creator_user_id, self.user_a.id)
+        
+    def test_new_group_valid_q(self):
+        group_name= 'test_group_gq1_user_q'
+        group_gq1_id = self.write_timer_helper_q.new_group(group_name)
+        group_gq1 = PADSTimerGroup.objects.get(pk=group_gq1_id) # gq1, not gaL
+        # Assertions
+        self.assertIsNotNone(group_gq1_id)
+        self.assertEquals(group_gq1.name, group_name)
+        self.assertEquals(group_gq1.creator_user_id, self.user_q.id)
+    
+    def test_new_group_same_name_a(self):
+        group_name = 'test_group_ga2_dup_user_a'
+        # Attempt to create a group with the same name twice for User A
+        self.write_timer_helper_a.new_group(group_name)
+        group_ga2_dup_id = self.write_timer_helper_a.new_group(group_name)
+        # Assertions
+        self.assertIsNone(group_ga2_dup_id)
+
+    def test_new_group_same_name_q(self):
+        group_name = 'test_group_gq2_dup_user_q'
+        # Attempt to create a group with the same name twice for QL User
+        self.write_timer_helper_q.new_group(group_name)
+        group_gq2_dup_id = self.write_timer_helper_q.new_group(group_name)
+        # Assertions
+        self.assertIsNone(group_gq2_dup_id)
+    
+    def test_new_group_bad_name_a(self):
+        # Multi-assertions
+        for i in bad_str_inputs.values():
+            bad_group_id = self.write_timer_helper_a.new_group(i)
+            if i is not None:
+                # Beginner's PROTIP: None is not an accepted value for Django
+                # database queries.
+                bad_group_created = PADSTimerGroup.objects.filter(
+                        name__icontains=i).exists()
+            else:
+                bad_group_created = False
+            self.assertIsNone(bad_group_id)
+            self.assertFalse(bad_group_created)
+
+    def test_new_group_bad_name_q(self):
+        # Multi-assertions
+        for i in bad_str_inputs.values():
+            bad_group_id = self.write_timer_helper_q.new_group(i)
+            if i is not None:
+                bad_group_created = PADSTimerGroup.objects.filter(
+                        name__icontains=i).exists()
+            else:
+                bad_group_created = False
+            self.assertIsNone(bad_group_id)
+            self.assertFalse(bad_group_created)
+        
+    def test_new_group_signed_out(self):
+        write_timer_helper = PADSWriteTimerHelper()
+        group_name = 'test_group_gs1_signed_out_user'
+        group_gs1_id = write_timer_helper.new_group(group_name)
+        group_created = PADSTimerGroup.objects.filter(
+                name__icontains=group_name)
+        # Assertions
+        self.assertIsNone(group_gs1_id)
+        self.assertFalse(group_created)
 
 class PADSWriteTimerHelperAddToGroupTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        raise NotImplementedError
+        # Set Up Test Users and Write Timer Helpers
+        #  Test User A
+        username_a = 'test-jess-atgt'
+        password_a = '       mnbvcxzMNBVVCXZ12345'
+        cls.user_a = write_user_helper.prepare_user_in_db(
+                username_a, password_a)
+        cls.user_a.save()
+        cls.write_timer_helper_a = PADSWriteTimerHelper(cls.user_a.id)
+        #  Test Quick List User
+        cls.user_q = write_user_helper.prepare_ql_user_in_db()[0]
+        cls.user_q.save()
+        cls.write_timer_helper_q = PADSWriteTimerHelper(cls.user_q.id)
+        # Set up Test Timers for Test Users
+        #  Test User A
+        timer_a1_desc = 'Test Timer A1 by Test User A'
+        cls.timer_a1_id = cls.write_timer_helper_a.new(timer_a1_desc)
+        timer_a2_p_desc = 'Test Timer A2 (Public) by Test User A'
+        cls.timer_a2_p_id = cls.write_timer_helper_a.new(
+                timer_a2_p_desc, public=True)
+        #  Test QL User
+        timer_q1_desc = 'Test Timer Q1 by Test QL User'
+        cls.timer_q1_id = cls.write_timer_helper_q.new(timer_q1_desc)        
+        timer_q2_p_desc = 'Test Timer A2 (Public) by Test User A'
+        cls.timer_q2_p_id = cls.write_timer_helper_q.new(
+                timer_q2_p_desc, public=True)
+        # Set up Test Timer Groups for Test Users
+        #  Test User A
+        cls.tgroup_ga1_name = 'test_group_ga1_user_a'
+        cls.tgroup_ga1_id = cls.write_timer_helper_a.new_group(
+                cls.tgroup_ga1_name)
+        #  Test QL User
+        cls.tgroup_gq1_name = 'test_group_gq1_user_q'
+        cls.tgroup_gq1_id = cls.write_timer_helper_q.new_group(
+                cls.tgroup_ga1_name)
+        
+    def test_add_to_group_valid_private_a(self):
+        add_result = self.write_timer_helper_a.add_to_group(
+                self.timer_a1_id, self.tgroup_ga1_id)
+        a1_ga1_exists = GroupInclusion.objects.filter(
+                timer_id=self.timer_a1_id, group_id=self.tgroup_ga1_id)
+        # Assertions
+        self.assertTrue(add_result)
+        self.assertTrue(a1_ga1_exists)
+    
+    def test_add_to_group_valid_private_q(self):
+        add_result = self.write_timer_helper_q.add_to_group(
+                self.timer_q1_id, self.tgroup_gq1_id)
+        q1_gq1_exists = GroupInclusion.objects.filter(
+                timer_id=self.timer_q1_id, group_id=self.tgroup_gq1_id)
+        # Assertions
+        self.assertTrue(add_result)
+        self.assertTrue(q1_gq1_exists)
+        
+    def test_add_to_group_valid_public_other_user_a(self):
+        # A User may add another User's public Timer to own Groups.
+        add_result = self.write_timer_helper_a.add_to_group(
+                self.timer_q2_p_id, self.tgroup_ga1_id)
+        q2_p_ga1_exists = GroupInclusion.objects.filter(
+                timer_id=self.timer_q2_p_id,
+                group_id=self.tgroup_ga1_id).exists()
+        # Assertions
+        self.assertTrue(add_result)
+        self.assertTrue(q2_p_ga1_exists)
 
-class PADSWriteTimerHelperNewGroupTests(TestCase):
+    def test_add_to_group_valid_public_other_user_q(self):
+        # A QL User may add another User's public Timer to own Groups.
+        add_result = self.write_timer_helper_q.add_to_group(
+                self.timer_a2_p_id, self.tgroup_gq1_id)
+        a2_p_gq1_exists = GroupInclusion.objects.filter(
+                timer_id=self.timer_a2_p_id,
+                group_id=self.tgroup_gq1_id).exists()
+        # Assertions
+        self.assertTrue(add_result)
+        self.assertTrue(a2_p_gq1_exists)
+    
+    def test_add_to_group_private_other_user_a(self):
+        # A User must fail to add another User's private Timers to own Groups.
+        add_result = self.write_timer_helper_a.add_to_group(
+                self.timer_q1_id, self.tgroup_ga1_id)
+        q1_ga1_exists = GroupInclusion.objects.filter(
+                timer_id=self.timer_q1_id,
+                group_id=self.tgroup_ga1_id).exists()
+        # Assertions
+        self.assertFalse(add_result)
+        self.assertFalse(q1_ga1_exists)
+
+    def test_add_to_group_private_other_user_q(self):
+        # A QL User must fail to add other Users' private Timers to own Groups.
+        add_result = self.write_timer_helper_q.add_to_group(
+                self.timer_a1_id, self.tgroup_gq1_id)
+        a1_gq1_exists = GroupInclusion.objects.filter(
+                timer_id=self.timer_a1_id,
+                group_id=self.tgroup_gq1_id).exists()
+        # Assertions
+        self.assertFalse(add_result)
+        self.assertFalse(a1_gq1_exists)
+    
+    def test_add_to_group_wrong_user_a(self):
+        # A User must fail to add any Timer to another User's Groups.
+        add_result_a1_gq1 = self.write_timer_helper_a.add_to_group(
+                self.timer_a1_id, self.tgroup_gq1_id)
+        add_result_a2_p_gq1 = self.write_timer_helper_a.add_to_group(
+                self.timer_a2_p_id, self.tgroup_gq1_id)
+        add_result_q1_gq1 = self.write_timer_helper_a.add_to_group(
+                self.timer_q1_id, self.tgroup_gq1_id)
+        add_result_q2_p_gq1 = self.write_timer_helper_a.add_to_group(
+                self.timer_q2_p_id, self.tgroup_gq1_id)        
+        inclusions_created = GroupInclusion.objects.all().count()
+        # Assertions
+        self.assertFalse(add_result_a1_gq1)
+        self.assertFalse(add_result_a2_p_gq1)
+        self.assertFalse(add_result_q1_gq1)
+        self.assertFalse(add_result_q2_p_gq1)
+        self.assertEquals(inclusions_created, 0)
+    
+    def test_add_to_group_wrong_user_q(self):
+        # A QL User must fail to add any Timer to another User's Groups.
+        add_result_a1_ga1 = self.write_timer_helper_q.add_to_group(
+                self.timer_a1_id, self.tgroup_ga1_id)
+        add_result_a2_p_ga1 = self.write_timer_helper_q.add_to_group(
+                self.timer_a2_p_id, self.tgroup_ga1_id)
+        add_result_q1_ga1 = self.write_timer_helper_q.add_to_group(
+                self.timer_q1_id, self.tgroup_ga1_id)
+        add_result_q2_p_ga1 = self.write_timer_helper_q.add_to_group(
+                self.timer_q2_p_id, self.tgroup_ga1_id)        
+        inclusions_created = GroupInclusion.objects.all().count()
+        # Assertions
+        self.assertFalse(add_result_a1_ga1)
+        self.assertFalse(add_result_a2_p_ga1)
+        self.assertFalse(add_result_q1_ga1)
+        self.assertFalse(add_result_q2_p_ga1)
+        self.assertEquals(inclusions_created, 0)
+
+    def test_add_to_group_invalid_timer_id_a(self):
+        add_result = self.write_timer_helper_a.add_to_group(
+                -9999, self.tgroup_ga1_id)
+        inclusions_created = GroupInclusion.objects.all().count()
+        # Assertions
+        self.assertFalse(add_result)
+        self.assertEquals(inclusions_created, 0)
+
+    def test_add_to_group_invalid_timer_id_q(self):
+        add_result = self.write_timer_helper_q.add_to_group(
+                -9999, self.tgroup_ga1_id)
+        inclusions_created = GroupInclusion.objects.all().count()
+        # Assertions
+        self.assertFalse(add_result)
+        self.assertEquals(inclusions_created, 0)
+    
+    def test_add_to_group_invalid_group_id_a(self):
+        add_result = self.write_timer_helper_a.add_to_group(
+                self.timer_a1_id, -9999)
+        add_result_p = self.write_timer_helper_a.add_to_group(
+                self.timer_a2_p_id, -9999)
+        inclusions_created = GroupInclusion.objects.all().count()
+        # Assertions
+        self.assertFalse(add_result)
+        self.assertFalse(add_result_p)
+        self.assertEquals(inclusions_created, 0)
+
+    def test_add_to_group_invalid_group_id_q(self):
+        add_result = self.write_timer_helper_q.add_to_group(
+                self.timer_a1_id, -9999)
+        add_result_p = self.write_timer_helper_q.add_to_group(
+                self.timer_a2_p_id, -9999)
+        inclusions_created = GroupInclusion.objects.all().count()
+        # Assertions
+        self.assertFalse(add_result)
+        self.assertFalse(add_result_p)
+        self.assertEquals(inclusions_created, 0)
+    
+    def test_add_to_group_invalid_ids_a(self):
+        add_result = self.write_timer_helper_a.add_to_group(
+                -9999, -9999)
+        inclusions_created = GroupInclusion.objects.all().count()
+        # Assertions
+        self.assertFalse(add_result)
+        self.assertEquals(inclusions_created, 0)
+
+    def test_add_to_group_invalid_ids_q(self):
+        add_result = self.write_timer_helper_q.add_to_group(
+                -9999, -9999)
+        inclusions_created = GroupInclusion.objects.all().count()
+        # Assertions
+        self.assertFalse(add_result)
+        self.assertEquals(inclusions_created, 0)
+ 
+class PADSWriteTimerHelperDeleteGroupByIdTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        raise NotImplementedError
+        # Set Up Test Users and Write Timer Helpers
+        #  Test User A'
+        username_a = 'test-jess-thdgbi'
+        password_a = '       +-/*+-/*fghjFGHJ99999'
+        cls.user_a = write_user_helper.prepare_user_in_db(
+                username_a, password_a)
+        cls.user_a.save()
+        cls.write_timer_helper_a = PADSWriteTimerHelper(cls.user_a.id)
+        #  Test Quick List User
+        cls.user_q = write_user_helper.prepare_ql_user_in_db()[0]
+        cls.user_q.save()
+        cls.write_timer_helper_q = PADSWriteTimerHelper(cls.user_q.id)
+        # Set up Test Timer Groups for Test Users
+        #  Test User A'
+        cls.tgroup_ga1_name = 'test_group_ga1_user_a'
+        cls.tgroup_ga1_id = cls.write_timer_helper_a.new_group(
+                cls.tgroup_ga1_name)
+        cls.tgroup_ga1 = PADSTimerGroup.objects.get(pk=cls.tgroup_ga1_id)
+        #  Test QL User
+        cls.tgroup_gq1_name = 'test_group_gq1_user_q'
+        cls.tgroup_gq1_id = cls.write_timer_helper_q.new_group(
+                cls.tgroup_ga1_name)
+        cls.tgroup_gq1 = PADSTimerGroup.objects.get(pk=cls.tgroup_gq1_id)
+    
+    def all_tgroups_in_database(self):
+        '''Checks if the test Timer Groups are still in the database
+        '''
+        tgroup_ga1_exists = PADSTimerGroup.objects.filter(
+                pk=self.tgroup_ga1_id).exists()
+        tgroup_gq1_exists = PADSTimerGroup.objects.filter(
+                pk=self.tgroup_ga1_id).exists()
+        return tgroup_ga1_exists & tgroup_gq1_exists
+        
+    def test_delete_group_by_id_valid_a(self):
+        del_result = self.write_timer_helper_a.delete_group_by_id(
+                self.tgroup_ga1_id)
+        tgroup_ga1_exists = PADSTimerGroup.objects.filter(
+                pk=self.tgroup_ga1_id)
+        # Assertions
+        self.assertTrue(del_result)
+        self.assertFalse(tgroup_ga1_exists)
 
-class PADSWriteTimerHelperDeleteGroupTests(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        raise NotImplementedError
+    def test_delete_group_by_id_valid_q(self):
+        del_result = self.write_timer_helper_q.delete_group_by_id(
+                self.tgroup_gq1_id)
+        tgroup_gq1_exists = PADSTimerGroup.objects.filter(
+                pk=self.tgroup_gq1_id)
+        # Assertions
+        self.assertTrue(del_result)
+        self.assertFalse(tgroup_gq1_exists)
 
+    def test_delete_group_by_id_wrong_user_a(self):
+        del_result = self.write_timer_helper_a.delete_group_by_id(
+                self.tgroup_gq1_id)
+        tgroup_gq1_exists = PADSTimerGroup.objects.filter(
+                pk=self.tgroup_gq1_id)
+        # Assertions
+        self.assertFalse(del_result)
+        self.assertTrue(tgroup_gq1_exists)
+
+    def test_delete_group_by_id_wrong_user_q(self):
+        del_result = self.write_timer_helper_q.delete_group_by_id(
+                self.tgroup_ga1_id)
+        tgroup_ga1_exists = PADSTimerGroup.objects.filter(
+                pk=self.tgroup_ga1_id)
+        # Assertions
+        self.assertFalse(del_result)
+        self.assertTrue(tgroup_ga1_exists)
+    
+    def test_delete_group_by_id_invalid_id_a(self):
+        del_result = self.write_timer_helper_a.delete_group_by_id(-9999)
+        # Assertions
+        self.assertFalse(del_result)
+        self.assertTrue(self.all_tgroups_in_database())
+
+    def test_delete_group_by_id_invalid_id_q(self):
+        del_result = self.write_timer_helper_q.delete_group_by_id(-9999)
+        # Assertions
+        self.assertFalse(del_result)
+        self.assertTrue(self.all_tgroups_in_database())
+    
+    def test_delete_group_by_id_signed_out(self):
+        write_timer_helper = PADSWriteTimerHelper()
+        del_result = write_timer_helper.delete_group_by_id(
+                self.tgroup_ga1.id)
+        # Assertions
+        self.assertFalse(del_result)
+        self.assertTrue(self.all_tgroups_in_database)
+    
 class PADSWriteTimerHelperRemoveFromGroupTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        raise NotImplementedError
+        # Set Up Test Users and Write Timer Helpers
+        #  Test User A
+        username_a = 'test-jess-rfgt'
+        password_a = '       54321YTREytre'
+        cls.user_a = write_user_helper.prepare_user_in_db(
+                username_a, password_a)
+        cls.user_a.save()
+        cls.write_timer_helper_a = PADSWriteTimerHelper(cls.user_a.id)
+        #  Test Quick List User
+        cls.user_q = write_user_helper.prepare_ql_user_in_db()[0]
+        cls.user_q.save()
+        cls.write_timer_helper_q = PADSWriteTimerHelper(cls.user_q.id)
+        # Set up Test Timers for Test Users
+        #  Test User A
+        timer_a1_desc = 'Test Timer A1 by Test User A'
+        cls.timer_a1_id = cls.write_timer_helper_a.new(timer_a1_desc)
+        timer_a2_p_desc = 'Test Timer A2 (Public) by Test User A'
+        cls.timer_a2_p_id = cls.write_timer_helper_a.new(
+                timer_a2_p_desc, public=True)
+        #  Test QL User
+        timer_q1_desc = 'Test Timer Q1 by Test QL User'
+        cls.timer_q1_id = cls.write_timer_helper_q.new(timer_q1_desc)        
+        timer_q2_p_desc = 'Test Timer A2 (Public) by Test User A'
+        cls.timer_q2_p_id = cls.write_timer_helper_q.new(
+                timer_q2_p_desc, public=True)
+        # Set up Test Timer Groups for Test Users
+        #  Test User A
+        cls.tgroup_ga1_name = 'test_group_ga1_user_a'
+        cls.tgroup_ga1_id = cls.write_timer_helper_a.new_group(
+                cls.tgroup_ga1_name)
+        #  Test QL User
+        cls.tgroup_gq1_name = 'test_group_gq1_user_q'
+        cls.tgroup_gq1_id = cls.write_timer_helper_q.new_group(
+                cls.tgroup_gq1_name)
+        # Set up Test Group Inclusions (add Timers to Groups)
+        #  Test User A, Permitted
+        cls.write_timer_helper_a.add_to_group(
+                cls.timer_a1_id, cls.tgroup_ga1_id)
+        cls.write_timer_helper_a.add_to_group(
+                cls.timer_a2_p_id, cls.tgroup_ga1_id)
+        cls.write_timer_helper_a.add_to_group(
+                cls.timer_q2_p_id, cls.tgroup_ga1_id) # Other Users' public
+        #  Test User A, Not Permitted
+        incl_q1_ga1 = GroupInclusion(
+                timer_id=cls.timer_q1_id, group_id=cls.tgroup_ga1_id)
+        incl_q1_ga1.save()
+        #  Test QL User, Permitted
+        cls.write_timer_helper_q.add_to_group(
+                cls.timer_q1_id, cls.tgroup_gq1_id)
+        cls.write_timer_helper_q.add_to_group(
+                cls.timer_q2_p_id, cls.tgroup_gq1_id)
+        cls.write_timer_helper_q.add_to_group(
+                cls.timer_a2_p_id, cls.tgroup_gq1_id) # Other Users' public
+        #  Test QL User, Not Permitted                
+        incl_a1_gq1 = GroupInclusion(
+                timer_id=cls.timer_a1_id, group_id=cls.tgroup_gq1_id)
+        incl_a1_gq1.save()
+
+    def user_a_group_inclusions_unchanged(self):
+        a1_ga1_exists = GroupInclusion.objects.filter(
+            timer_id=self.timer_a1_id, group_id=self.tgroup_ga1_id).exists()
+        a2_p_ga1_exists = GroupInclusion.objects.filter(
+            timer_id=self.timer_a2_p_id, group_id=self.tgroup_ga1_id).exists()
+        q1_ga1_exists = GroupInclusion.objects.filter(
+            timer_id=self.timer_q1_id, group_id=self.tgroup_ga1_id).exists()
+        q2_p_ga1_exists = GroupInclusion.objects.filter(
+            timer_id=self.timer_q2_p_id, group_id=self.tgroup_ga1_id).exists()
+        return a1_ga1_exists & a2_p_ga1_exists & q1_ga1_exists & q2_p_ga1_exists
+
+    def user_q_group_inclusions_unchanged(self):
+        a1_gq1_exists = GroupInclusion.objects.filter(
+            timer_id=self.timer_a1_id, group_id=self.tgroup_gq1_id).exists()
+        a2_p_gq1_exists = GroupInclusion.objects.filter(
+            timer_id=self.timer_a2_p_id, group_id=self.tgroup_gq1_id).exists()
+        q1_gq1_exists = GroupInclusion.objects.filter(
+            timer_id=self.timer_q1_id, group_id=self.tgroup_gq1_id).exists()
+        q2_p_gq1_exists = GroupInclusion.objects.filter(
+            timer_id=self.timer_q2_p_id, group_id=self.tgroup_gq1_id).exists()
+        return a1_gq1_exists & a2_p_gq1_exists & q1_gq1_exists & q2_p_gq1_exists
+
+    def test_remove_from_group_valid_private_a(self):
+        remove_result = self.write_timer_helper_a.remove_from_group(
+                self.timer_a1_id, self.tgroup_ga1_id)
+        timer_in_group = GroupInclusion.objects.filter(
+              timer_id=self.timer_a1_id, group_id=self.tgroup_ga1_id).exists()
+        # Assertions
+        self.assertTrue(remove_result)
+        self.assertFalse(timer_in_group)
+    
+    def test_remove_from_group_valid_private_q(self):
+        remove_result = self.write_timer_helper_q.remove_from_group(
+                self.timer_q1_id, self.tgroup_gq1_id)
+        timer_in_group = GroupInclusion.objects.filter(
+              timer_id=self.timer_q1_id, group_id=self.tgroup_gq1_id).exists()
+        # Assertions
+        self.assertTrue(remove_result)
+        self.assertFalse(timer_in_group)
+        
+    def test_remove_from_group_valid_other_user_timers_a(self):
+        # A User may remove another User's Timer (public or private) 
+        # from own Groups.
+        remove_result_other = self.write_timer_helper_a.remove_from_group(
+                self.timer_q1_id, self.tgroup_ga1_id)
+        remove_result_other_p = self.write_timer_helper_a.remove_from_group(
+                self.timer_q2_p_id, self.tgroup_ga1_id)        
+        timer_in_group = GroupInclusion.objects.filter(
+              timer_id=self.timer_q1_id, group_id=self.tgroup_ga1_id).exists()
+        timer_pub_in_group = GroupInclusion.objects.filter(
+             timer_id=self.timer_q2_p_id, group_id=self.tgroup_ga1_id).exists()
+        # Assertions
+        self.assertTrue(remove_result_other)
+        self.assertTrue(remove_result_other_p)
+        self.assertFalse(timer_in_group)
+        self.assertFalse(timer_pub_in_group)
+
+    def test_remove_from_group_valid_other_user_timers_q(self):
+        # A QL User may remove another User's Timer, public or private,
+        # from own Groups. This is to aid recovery from potential errors
+        remove_result_other = self.write_timer_helper_q.remove_from_group(
+                self.timer_a1_id, self.tgroup_gq1_id)
+        remove_result_other_p = self.write_timer_helper_q.remove_from_group(
+                self.timer_a2_p_id, self.tgroup_gq1_id)        
+        timer_in_group = GroupInclusion.objects.filter(
+              timer_id=self.timer_a1_id, group_id=self.tgroup_gq1_id).exists()
+        timer_pub_in_group = GroupInclusion.objects.filter(
+             timer_id=self.timer_a2_p_id, group_id=self.tgroup_gq1_id).exists()
+        # Assertions
+        self.assertTrue(remove_result_other)
+        self.assertTrue(remove_result_other_p)
+        self.assertFalse(timer_in_group)
+        self.assertFalse(timer_pub_in_group)
+
+    def test_remove_from_group_no_inclusion_a(self):
+        # Helper should indicate an error if an attempt is made to remove
+        #  an existing Timer from an existing Group it doesn't belong to.
+        self.write_timer_helper_a.remove_from_group(
+                self.timer_a1_id, self.tgroup_ga1_id)
+        remove_result_2 = self.write_timer_helper_a.remove_from_group(
+                self.timer_a1_id, self.tgroup_ga1_id)
+        # Assertions
+        self.assertFalse(remove_result_2)
+        self.assertTrue(self.user_q_group_inclusions_unchanged)
+
+    def test_remove_from_group_no_inclusion_q(self):    
+        # Helper should indicate an error if an attempt is made to remove
+        #  an existing Timer from an existing Group it doesn't belong to.
+        self.write_timer_helper_q.remove_from_group(
+                self.timer_q1_id, self.tgroup_gq1_id)
+        remove_result_2 = self.write_timer_helper_q.remove_from_group(
+                self.timer_q1_id, self.tgroup_gq1_id)
+        # Assertions
+        self.assertFalse(remove_result_2)
+        self.assertTrue(self.user_a_group_inclusions_unchanged)
+        
+    def test_remove_from_group_wrong_user_a(self):
+        # A User must fail to remove any Timer from another User's Groups.
+        remove_result_own = self.write_timer_helper_a.remove_from_group(
+                self.timer_a1_id, self.tgroup_gq1_id)
+        remove_result_own_pub = self.write_timer_helper_a.remove_from_group(
+                self.timer_a2_p_id, self.tgroup_gq1_id)
+        remove_result_other = self.write_timer_helper_a.remove_from_group(
+                self.timer_q1_id, self.tgroup_gq1_id)
+        remove_result_other_pub = self.write_timer_helper_a.remove_from_group(
+                self.timer_q2_p_id, self.tgroup_gq1_id)
+        # Assertions
+        self.assertFalse(remove_result_own)
+        self.assertFalse(remove_result_own_pub)
+        self.assertFalse(remove_result_other)
+        self.assertFalse(remove_result_other_pub)
+        self.assertTrue(self.user_a_group_inclusions_unchanged)
+        self.assertTrue(self.user_q_group_inclusions_unchanged)
+    
+    def test_remove_to_group_wrong_user_q(self):
+        # A QL User must fail to remove any Timer from another User's Groups.
+        remove_result_own = self.write_timer_helper_q.remove_from_group(
+                self.timer_q1_id, self.tgroup_ga1_id)
+        remove_result_own_pub = self.write_timer_helper_q.remove_from_group(
+                self.timer_q2_p_id, self.tgroup_ga1_id)
+        remove_result_other = self.write_timer_helper_q.remove_from_group(
+                self.timer_a1_id, self.tgroup_ga1_id)
+        remove_result_other_pub = self.write_timer_helper_q.remove_from_group(
+                self.timer_a2_p_id, self.tgroup_ga1_id)
+        # Assertions
+        self.assertFalse(remove_result_own)
+        self.assertFalse(remove_result_own_pub)
+        self.assertFalse(remove_result_other)
+        self.assertFalse(remove_result_other_pub)
+        self.assertTrue(self.user_a_group_inclusions_unchanged)
+        self.assertTrue(self.user_q_group_inclusions_unchanged)
+
+    def test_remove_from_group_invalid_timer_id_a(self):
+        remove_result = self.write_timer_helper_a.remove_from_group(
+                -9999, self.tgroup_ga1_id)
+        # Assertions
+        self.assertFalse(remove_result)
+        self.assertTrue(self.user_a_group_inclusions_unchanged)
+        self.assertTrue(self.user_q_group_inclusions_unchanged)
+    
+    def test_remove_from_group_invalid_group_id_a(self):
+        remove_result = self.write_timer_helper_a.remove_from_group(
+                self.timer_a1_id, -9999)
+        # Assertions
+        self.assertFalse(remove_result)
+        self.assertTrue(self.user_a_group_inclusions_unchanged)
+        self.assertTrue(self.user_q_group_inclusions_unchanged)
+    
+    def test_remove_from_group_invalid_ids_a(self):
+        remove_result = self.write_timer_helper_a.remove_from_group(
+                -9999, -9999)
+        # Assertions
+        self.assertFalse(remove_result)
+        self.assertTrue(self.user_a_group_inclusions_unchanged)
+        self.assertTrue(self.user_q_group_inclusions_unchanged)
 
 class PADSWriteTimerHelperDeleteTests(TestCase):
     @classmethod
