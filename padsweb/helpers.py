@@ -276,11 +276,18 @@ class PADSWriteTimerHelper(PADSWriteHelper):
     def add_to_group(self, timer_id, group_id):
         if self.user_is_registered() is False:
             return False
+        if (isinstance(timer_id, int) & isinstance(group_id, int) ) is False:
+            return False
         else:
-            timer_exists = self.timer_model.objects.filter(
+            # Note: any user can add any Public Timer to own groups, even
+            #  if they were created/owned by another user
+            public_timer_exists = self.timer_model.objects.filter(
+                    pk=timer_id, public=True).exists()
+            user_timer_exists = self.user_timers.filter(
                     pk=timer_id).exists()
-            group_exists = self.group_model.objects.filter(
+            group_exists = self.user_timer_groups.filter(
                     pk=group_id).exists()
+            timer_exists = public_timer_exists | user_timer_exists
             if (timer_exists is True) & (group_exists is True):
                 group_inclusion = GroupInclusion()
                 group_inclusion.group_id = group_id
