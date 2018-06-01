@@ -260,6 +260,12 @@ class PADSWriteTimerHelper(PADSWriteHelper):
         """
         if self.user_is_registered() is False:
             return None
+        elif isinstance(description, str) is False:
+            return None
+        elif len(description) <= 0:
+            return None
+        elif description.isspace() is True:
+            return None
         else:
             timer_exists = self.user_timers.filter(pk=timer_id).exists()
             if timer_exists is True:
