@@ -75,8 +75,8 @@ Here's the non-volatile version that retains accounts and timers:
 ::
 
     docker volume create padsweb-data
-    docker build -t padsweb:0.5-demo
-    docker run -dp 9180:80 -v pads-data:/usr/share/ --rm --name pads padsweb:0.5-demo
+    docker build -t padsweb:0.5-demo .
+    docker run -dp 9180:80 -v padsweb-data:/usr/share/ --rm --name pads padsweb:0.5-demo
 
 Both versions will set up a running instance on port 9180 on the host
 at ``/pads``. When running on a local machine, try
